@@ -24,7 +24,7 @@ const usePlaidAuthentication = () => {
         message: "creating token...",
       },
     ]);
-    const resp = await fetch("/get-token");
+    const resp = await fetch("/create-token");
     const body = await resp.json();
     if (!resp.ok) {
       setLogs((prev) => [

@@ -34,12 +34,13 @@ struct LinkRequest {
     user: User,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct PlaidAuthResponse {
     link_token: String,
 }
 
-async fn get_link_token() -> String {
+async fn get_link_token() -> axum::Json<PlaidAuthResponse> {
+    println!("[GET TOKEN]: get token called");
     let (client_id, secret) = load_env();
 
     let request = LinkRequest {
@@ -72,13 +73,15 @@ async fn get_link_token() -> String {
         process::exit(1);
     });
 
-    return plaid_auth_response.link_token;
+    return axum::Json(plaid_auth_response);
 }
 
 pub async fn link() {
     // Set up serving of the frontend react app
     let serve_dir = tower_http::services::ServeDir::new("web/dist");
-    let router: Router = axum::Router::new().fallback_service(serve_dir);
+    let router: Router = axum::Router::new()
+        .route("/create-token", axum::routing::get(get_link_token))
+        .fallback_service(serve_dir);
 
     // Create server URL on OS-specified port, save address in addr var
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
