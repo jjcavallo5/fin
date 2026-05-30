@@ -1,6 +1,7 @@
 use crate::link::types;
 use crate::utils;
-use axum::{self, Json};
+use axum::extract::State;
+use axum::Json;
 
 fn load_env() -> (String, String) {
     let client_id = std::env::var("PLAID_CLIENT_ID").unwrap_or_else(|_e| {
@@ -52,7 +53,10 @@ pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
     return axum::Json(plaid_auth_response);
 }
 
-pub async fn exchange_token(Json(payload): Json<types::PublicTokenRequest>) {
+pub async fn exchange_token(
+    State(state): State<std::sync::Arc<types::LinkServerState>>,
+    Json(payload): Json<types::PublicTokenRequest>,
+) {
     println!("[EXCHANGE TOKEN]: exchange token called");
     let (client_id, secret) = load_env();
 
@@ -74,11 +78,16 @@ pub async fn exchange_token(Json(payload): Json<types::PublicTokenRequest>) {
             std::process::exit(1);
         });
 
-    let access_token: types::TokenExchangeResponse = resp.json().await.unwrap_or_else(|_| {
+    let _access_token: types::TokenExchangeResponse = resp.json().await.unwrap_or_else(|_| {
         utils::print_error("response from Plaid was malformed");
         std::process::exit(1);
     });
-
-    println!("Access token: {}", access_token.access_token)
     // TODO store token in database or something
+
+    utils::print_success("account linked successfully");
+
+    // Graceful server shutdown after response to client
+    if let Some(tx) = state.shutdown_tx.lock().await.take() {
+        let _ = tx.send(());
+    }
 }

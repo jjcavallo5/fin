@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use tokio::sync::{oneshot, Mutex};
 
 #[derive(Serialize)]
 pub struct User {
@@ -36,4 +37,8 @@ pub struct TokenExchangeRequest {
 #[derive(Deserialize, Serialize)]
 pub struct TokenExchangeResponse {
     pub access_token: String,
+}
+
+pub struct LinkServerState {
+    pub shutdown_tx: std::sync::Arc<Mutex<Option<oneshot::Sender<()>>>>,
 }
