@@ -1,5 +1,4 @@
-use std::path::{Path, PathBuf};
-use std::process;
+use std::path::PathBuf;
 
 use crate::link::types;
 use crate::utils;
@@ -78,7 +77,12 @@ fn read_token_file() -> types::EncryptedTokenCache {
 
     match file_res {
         Ok(contents) => {
-            return serde_json::from_str(&contents).expect("Failed to parse token contents")
+            let decrypted_contents = keycrypt::decrypt(contents).unwrap_or_else(|_| {
+                utils::print_error("failed to load existing connections.");
+                std::process::exit(1);
+            });
+            return serde_json::from_str(&decrypted_contents)
+                .expect("Failed to parse token contents");
         }
         Err(_) => return types::EncryptedTokenCache { tokens: vec![] },
     }
