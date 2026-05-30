@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 mod link;
+mod utils;
 
 #[derive(Parser, Debug)]
 #[command(name = "fin")]
