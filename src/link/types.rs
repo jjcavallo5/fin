@@ -42,3 +42,8 @@ pub struct TokenExchangeResponse {
 pub struct LinkServerState {
     pub shutdown_tx: std::sync::Arc<Mutex<Option<oneshot::Sender<()>>>>,
 }
+
+#[derive(Deserialize, Serialize)]
+pub struct EncryptedTokenCache {
+    pub tokens: Vec<String>,
+}
