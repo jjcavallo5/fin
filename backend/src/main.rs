@@ -1,17 +1,23 @@
-use clap::Parser;
+use clap::{Parser, Subcommand};
 
 #[derive(Parser, Debug)]
-struct Args {
-    #[arg(short, long)]
-    name: String,
-    #[arg(short, long)]
-    count: u8,
+#[command(name = "fin")]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand, Debug)]
+enum Commands {
+    Link,
 }
 
 fn main() {
-    let args = Args::parse();
+    let args = Cli::parse();
 
-    for _ in 0..args.count {
-        println!("Hello, {}", args.name)
+    match &args.command {
+        Commands::Link => {
+            println!("LINK CALLED!")
+        }
     }
 }
