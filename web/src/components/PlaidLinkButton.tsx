@@ -1,10 +1,15 @@
-import { usePlaidLink } from "react-plaid-link";
+import type { LogEntry } from "../lib/types";
+import usePlaidTokenExchange from "../hooks/usePlaidTokenExchange";
 
-const PlaidLinkButton = ({ token }: { token: string }) => {
-  const onSuccess = () => {
-    // Do Stuff
-  };
-  const { open, ready } = usePlaidLink({ token, onSuccess });
+type Props = {
+  token: string;
+  setLogs: React.Dispatch<React.SetStateAction<LogEntry[]>>;
+};
+
+const PlaidLinkButton = ({ token, setLogs }: Props) => {
+  const { open, ready, showButton } = usePlaidTokenExchange(token, setLogs);
+
+  if (!showButton) return null;
 
   return (
     <button

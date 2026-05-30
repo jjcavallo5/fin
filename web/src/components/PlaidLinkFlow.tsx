@@ -1,8 +1,8 @@
-import usePlaidAuthentication from "../hooks/usePlaidLink";
+import usePlaidAuthentication from "../hooks/usePlaidAuthentication";
 import PlaidLinkButton from "./PlaidLinkButton";
 
 const PlaidLinkFlow = () => {
-  const { token, logs } = usePlaidAuthentication();
+  const { token, logs, setLogs } = usePlaidAuthentication();
 
   return (
     <>
@@ -27,7 +27,7 @@ const PlaidLinkFlow = () => {
         ))}
       </div>
 
-      {token && <PlaidLinkButton token={token} />}
+      {token && <PlaidLinkButton token={token} setLogs={setLogs} />}
     </>
   );
 };

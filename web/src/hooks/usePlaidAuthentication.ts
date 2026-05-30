@@ -1,15 +1,10 @@
 import { useEffect, useState } from "react";
 import { z } from "zod";
+import type { LogEntry } from "../lib/types";
 
 const LinkTokenResponseSchema = z.object({
   link_token: z.string(),
 });
-
-type LogEntry = {
-  level: "info" | "error" | "success";
-  time: string;
-  message: string;
-};
 
 const usePlaidAuthentication = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
@@ -53,7 +48,7 @@ const usePlaidAuthentication = () => {
     onLoad();
   }, []);
 
-  return { logs, token };
+  return { logs, token, setLogs };
 };
 
 export default usePlaidAuthentication;

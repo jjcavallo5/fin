@@ -51,3 +51,7 @@ pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
 
     return axum::Json(plaid_auth_response);
 }
+
+pub async fn exchange_token() {
+    println!("EXCHANGE!")
+}
