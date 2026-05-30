@@ -8,6 +8,7 @@ const PlaidLinkButton = ({ token }: { token: string }) => {
 
   return (
     <button
+      disabled={!ready}
       onClick={() => open()}
       className="w-[772px] rounded-sm border-[1px] border-bg-muted hover:bg-accent hover:text-bg hover:border-white transition-all cursor-pointer py-4  bg-accent/75 border-accent/50 font-mono text-white"
     >

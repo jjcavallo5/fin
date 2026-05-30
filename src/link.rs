@@ -73,6 +73,8 @@ fn get_link_token() -> String {
     return plaid_auth_response.link_token;
 }
 
-pub fn link() {
+#[tokio::main]
+pub async fn link() {
+    tower_http::services::ServeDir::new()
     let link_token = get_link_token();
 }
