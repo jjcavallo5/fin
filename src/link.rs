@@ -1,6 +1,9 @@
 use crate::utils;
+use axum::Router;
 use serde::{Deserialize, Serialize};
 use std::{env, process};
+use tokio::net::TcpListener;
+use webbrowser;
 
 fn load_env() -> (String, String) {
     let client_id = env::var("PLAID_CLIENT_ID").unwrap_or_else(|_e| {
@@ -33,12 +36,10 @@ struct LinkRequest {
 
 #[derive(Deserialize)]
 struct PlaidAuthResponse {
-    expiration: String,
     link_token: String,
-    request_id: String,
 }
 
-fn get_link_token() -> String {
+async fn get_link_token() -> String {
     let (client_id, secret) = load_env();
 
     let request = LinkRequest {
@@ -53,19 +54,20 @@ fn get_link_token() -> String {
         },
     };
 
-    let client = reqwest::blocking::Client::new();
+    let client = reqwest::Client::new();
 
     let resp = client
         .post("https://sandbox.plaid.com/link/token/create")
         .header("Content-Type", "application/json")
         .json(&request)
         .send()
+        .await
         .unwrap_or_else(|_| {
             utils::print_error("failed to create link token");
             process::exit(1);
         });
 
-    let plaid_auth_response: PlaidAuthResponse = resp.json().unwrap_or_else(|_| {
+    let plaid_auth_response: PlaidAuthResponse = resp.json().await.unwrap_or_else(|_| {
         utils::print_error("response from Plaid was malformed");
         process::exit(1);
     });
@@ -73,8 +75,22 @@ fn get_link_token() -> String {
     return plaid_auth_response.link_token;
 }
 
-#[tokio::main]
 pub async fn link() {
-    tower_http::services::ServeDir::new()
-    let link_token = get_link_token();
+    // Set up serving of the frontend react app
+    let serve_dir = tower_http::services::ServeDir::new("web/dist");
+    let router: Router = axum::Router::new().fallback_service(serve_dir);
+
+    // Create server URL on OS-specified port, save address in addr var
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr: std::net::SocketAddr = listener.local_addr().unwrap();
+
+    // Serve & open web browser to url
+    let url = format!("http://127.0.0.1:{}", addr.port());
+    webbrowser::open(&url).unwrap_or_else(|_| {
+        utils::print_error("failed to launch browser");
+        process::exit(1);
+    });
+    let _server = axum::serve(listener, router).await;
+
+    let _link_token = get_link_token().await;
 }

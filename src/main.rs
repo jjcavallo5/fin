@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use tokio;
 mod link;
 mod utils;
 
@@ -14,10 +15,11 @@ enum Commands {
     Link,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Cli::parse();
 
     match &args.command {
-        Commands::Link => link::link(),
+        Commands::Link => link::link().await,
     }
 }
