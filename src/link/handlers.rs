@@ -1,6 +1,6 @@
 use crate::link::types;
 use crate::utils;
-use axum;
+use axum::{self, Json};
 
 fn load_env() -> (String, String) {
     let client_id = std::env::var("PLAID_CLIENT_ID").unwrap_or_else(|_e| {
@@ -52,6 +52,33 @@ pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
     return axum::Json(plaid_auth_response);
 }
 
-pub async fn exchange_token() {
-    println!("EXCHANGE!")
+pub async fn exchange_token(Json(payload): Json<types::PublicTokenRequest>) {
+    println!("[EXCHANGE TOKEN]: exchange token called");
+    let (client_id, secret) = load_env();
+
+    let request = types::TokenExchangeRequest {
+        client_id,
+        secret,
+        public_token: payload.public_token,
+    };
+
+    let client = reqwest::Client::new();
+    let resp = client
+        .post("https://sandbox.plaid.com/item/public_token/exchange")
+        .header("Content-Type", "application/json")
+        .json(&request)
+        .send()
+        .await
+        .unwrap_or_else(|_| {
+            utils::print_error("failed to exchange token");
+            std::process::exit(1);
+        });
+
+    let access_token: types::TokenExchangeResponse = resp.json().await.unwrap_or_else(|_| {
+        utils::print_error("response from Plaid was malformed");
+        std::process::exit(1);
+    });
+
+    println!("Access token: {}", access_token.access_token)
+    // TODO store token in database or something
 }

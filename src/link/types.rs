@@ -20,3 +20,20 @@ pub struct LinkRequest {
 pub struct PlaidAuthResponse {
     pub link_token: String,
 }
+
+#[derive(Deserialize)]
+pub struct PublicTokenRequest {
+    pub public_token: String,
+}
+
+#[derive(Serialize)]
+pub struct TokenExchangeRequest {
+    pub client_id: String,
+    pub secret: String,
+    pub public_token: String,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct TokenExchangeResponse {
+    pub access_token: String,
+}

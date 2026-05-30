@@ -1,5 +1,8 @@
 use crate::utils;
-use axum::{routing::get, Router};
+use axum::{
+    routing::{get, post},
+    Router,
+};
 use tokio::net::TcpListener;
 mod handlers;
 mod types;
@@ -9,6 +12,7 @@ pub async fn link() {
     let serve_dir = tower_http::services::ServeDir::new("web/dist");
     let router: Router = axum::Router::new()
         .route("/create-token", get(handlers::get_link_token))
+        .route("/exchange-token", post(handlers::exchange_token))
         .fallback_service(serve_dir);
 
     // Create server URL on OS-specified port, save address in addr var
