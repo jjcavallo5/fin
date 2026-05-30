@@ -13,10 +13,10 @@ const PlaidLinkFlow = () => {
             <p
               className={
                 log.level === "error"
-                  ? "text-red-500"
+                  ? "text-red-500 w-[72px]"
                   : log.level === "info"
-                    ? "text-blue-300"
-                    : "text-green-500"
+                    ? "text-blue-300 w-[72px]"
+                    : "text-green-500 w-[72px]"
               }
             >
               {log.level.toUpperCase()}
