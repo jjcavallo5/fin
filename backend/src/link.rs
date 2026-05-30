@@ -1,6 +1,5 @@
 use crate::utils;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::{env, process};
 
 fn load_env() -> (String, String) {
@@ -16,12 +15,12 @@ fn load_env() -> (String, String) {
     return (client_id, secret);
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 struct User {
     client_user_id: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize)]
 struct LinkRequest {
     client_id: String,
     secret: String,
@@ -32,7 +31,14 @@ struct LinkRequest {
     user: User,
 }
 
-pub fn link() {
+#[derive(Deserialize)]
+struct PlaidAuthResponse {
+    expiration: String,
+    link_token: String,
+    request_id: String,
+}
+
+fn get_link_token() -> String {
     let (client_id, secret) = load_env();
 
     let request = LinkRequest {
@@ -54,9 +60,19 @@ pub fn link() {
         .header("Content-Type", "application/json")
         .json(&request)
         .send()
-        .unwrap();
+        .unwrap_or_else(|_| {
+            utils::print_error("failed to create link token");
+            process::exit(1);
+        });
 
-    println!("resp = {resp:?}");
-    let body = resp.text().unwrap();
-    println!("body = {body:?}");
+    let plaid_auth_response: PlaidAuthResponse = resp.json().unwrap_or_else(|_| {
+        utils::print_error("response from Plaid was malformed");
+        process::exit(1);
+    });
+
+    return plaid_auth_response.link_token;
+}
+
+pub fn link() {
+    let link_token = get_link_token();
 }
