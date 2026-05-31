@@ -1,4 +1,6 @@
-use crate::{cache, utils};
+use crate::plaid;
+use crate::tui;
+use crate::utils;
 use axum::{
     routing::{get, post},
     Router,
@@ -41,5 +43,10 @@ pub async fn link() {
 }
 
 pub async fn unlink() {
-    let cache = cache::read_token_file();
+    let linked_items = plaid::get_linked_items().await;
+    let names = linked_items
+        .iter()
+        .map(|item| item.item.institution_name.clone())
+        .collect();
+    tui::tui(names)
 }

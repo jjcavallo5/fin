@@ -4,6 +4,7 @@ mod balance;
 mod cache;
 mod link;
 mod plaid;
+mod tui;
 mod utils;
 
 #[derive(Parser, Debug)]
@@ -16,6 +17,7 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Link,
+    Unlink,
     Balance,
 }
 
@@ -25,6 +27,7 @@ async fn main() {
 
     match &args.command {
         Commands::Link => link::link().await,
+        Commands::Unlink => link::unlink().await,
         Commands::Balance => balance::balance().await,
     }
 }
