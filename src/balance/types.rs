@@ -8,27 +8,28 @@ pub struct GetAccountRequest {
 }
 
 #[derive(Deserialize)]
-struct Balance {
-    balance: f32,
+pub struct Balance {
+    pub available: f32,
+    pub current: f32,
 }
 
 #[derive(Deserialize)]
-struct Account {
-    account_id: String,
-    balances: Balance,
-    name: String,
-    official_name: String,
-    subtype: String,
+pub struct Account {
+    pub account_id: String,
+    pub balances: Balance,
+    pub name: String,
+    pub official_name: String,
+    pub subtype: String,
 }
 
 #[derive(Deserialize)]
-struct Item {
-    institution_name: String,
+pub struct Item {
+    pub institution_name: String,
 }
 
 #[derive(Deserialize)]
 pub struct GetAccountResponse {
-    accounts: Vec<Account>,
-    item: Item,
-    request_id: String,
+    pub accounts: Vec<Account>,
+    pub item: Item,
+    pub request_id: String,
 }

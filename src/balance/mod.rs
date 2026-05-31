@@ -27,7 +27,15 @@ pub async fn balance() {
                 std::process::exit(1);
             });
 
-        let body = resp.text().await.unwrap();
-        println!("{body:?}")
+        let body: types::GetAccountResponse = resp.json().await.unwrap_or_else(|_| {
+            utils::print_error("Balance response was malformed");
+            std::process::exit(1);
+        });
+
+        println!("{}:\n", body.item.institution_name);
+        for account in body.accounts {
+            println!("  Account: {}", account.name);
+            println!("  Balance: {}", account.balances.current);
+        }
     }
 }
