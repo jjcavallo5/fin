@@ -1,28 +1,13 @@
-use std::path::PathBuf;
-
+use crate::cache;
 use crate::link::types;
+use crate::plaid;
 use crate::utils;
 use axum::extract::State;
 use axum::Json;
-use dirs;
-use keycrypt;
-
-fn load_env() -> (String, String) {
-    let client_id = std::env::var("PLAID_CLIENT_ID").unwrap_or_else(|_e| {
-        utils::print_error("PLAID_CLIENT_ID environment variable not set");
-        std::process::exit(1);
-    });
-    let secret = std::env::var("PLAID_SECRET").unwrap_or_else(|_e| {
-        utils::print_error("PLAID_SECRET environment variable not set");
-        std::process::exit(1);
-    });
-
-    return (client_id, secret);
-}
 
 pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
     println!("[GET TOKEN]: get token called");
-    let (client_id, secret) = load_env();
+    let (client_id, secret) = plaid::load_env();
 
     let request = types::LinkRequest {
         client_id,
@@ -57,49 +42,12 @@ pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
     return axum::Json(plaid_auth_response);
 }
 
-fn get_token_cache_path() -> PathBuf {
-    let fin_dir = dirs::home_dir().unwrap().join(".fin");
-    std::fs::create_dir(fin_dir).err();
-    return dirs::home_dir().unwrap().join(".fin/tokens.enc");
-}
-
-fn write_token_file(cache: types::EncryptedTokenCache) {
-    let file_path = get_token_cache_path();
-    let file_contents = serde_json::to_string_pretty(&cache).expect("Failed to read tokens file");
-    let encrypted_contents =
-        keycrypt::encrypt(file_contents).expect("Failed to encrypt token file");
-    std::fs::write(&file_path, encrypted_contents).expect("Failed to write token file");
-}
-
-fn read_token_file() -> types::EncryptedTokenCache {
-    let file_path = get_token_cache_path();
-    let file_res = std::fs::read_to_string(&file_path);
-
-    match file_res {
-        Ok(contents) => {
-            let decrypted_contents = keycrypt::decrypt(contents).unwrap_or_else(|_| {
-                utils::print_error("failed to load existing connections.");
-                std::process::exit(1);
-            });
-            return serde_json::from_str(&decrypted_contents)
-                .expect("Failed to parse token contents");
-        }
-        Err(_) => return types::EncryptedTokenCache { tokens: vec![] },
-    }
-}
-
-fn save_encrypt_token(token: String) {
-    let mut cache = read_token_file();
-    cache.tokens.push(token);
-    write_token_file(cache);
-}
-
 pub async fn exchange_token(
     State(state): State<std::sync::Arc<types::LinkServerState>>,
     Json(payload): Json<types::PublicTokenRequest>,
 ) {
     println!("[EXCHANGE TOKEN]: exchange token called");
-    let (client_id, secret) = load_env();
+    let (client_id, secret) = plaid::load_env();
 
     let request = types::TokenExchangeRequest {
         client_id,
@@ -125,7 +73,7 @@ pub async fn exchange_token(
     });
 
     // Save token to encrypted file
-    save_encrypt_token(access_token.access_token);
+    cache::save_encrypt_token(access_token.access_token);
 
     utils::print_success("account linked successfully");
 

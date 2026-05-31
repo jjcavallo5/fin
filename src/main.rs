@@ -1,6 +1,9 @@
 use clap::{Parser, Subcommand};
 use tokio;
+mod balance;
+mod cache;
 mod link;
+mod plaid;
 mod utils;
 
 #[derive(Parser, Debug)]
@@ -13,6 +16,7 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Commands {
     Link,
+    Balance,
 }
 
 #[tokio::main]
@@ -21,5 +25,6 @@ async fn main() {
 
     match &args.command {
         Commands::Link => link::link().await,
+        Commands::Balance => balance::balance().await,
     }
 }
