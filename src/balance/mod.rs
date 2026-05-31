@@ -1,39 +1,13 @@
-use crate::cache;
 use crate::plaid;
-use crate::utils;
 mod types;
 
 pub async fn balance() {
-    println!("[GET TOKEN]: get token called");
-    let (client_id, secret) = plaid::load_env();
+    let linked_items = plaid::get_linked_items().await;
 
-    let token_cache = cache::read_token_file();
+    for item in linked_items {
+        println!("\x1B[1m{}:\x1B[0m\n", item.item.institution_name);
 
-    let client = reqwest::Client::new();
-    for token in token_cache.tokens {
-        let request = types::GetAccountRequest {
-            client_id: client_id.clone(),
-            secret: secret.clone(),
-            access_token: token,
-        };
-        let resp = client
-            .post("https://sandbox.plaid.com/accounts/get")
-            .header("Content-Type", "application/json")
-            .json(&request)
-            .send()
-            .await
-            .unwrap_or_else(|_| {
-                utils::print_error("failed to create link token");
-                std::process::exit(1);
-            });
-
-        let body: types::GetAccountResponse = resp.json().await.unwrap_or_else(|_| {
-            utils::print_error("Balance response was malformed");
-            std::process::exit(1);
-        });
-
-        println!("\x1B[1m{}:\x1B[0m\n", body.item.institution_name);
-        for account in body.accounts {
+        for account in item.accounts {
             println!("  {}: ${}", account.name, account.balances.available);
         }
         println!()

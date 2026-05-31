@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::{cache, utils};
 use axum::{
     routing::{get, post},
     Router,
@@ -38,4 +38,8 @@ pub async fn link() {
             let _ = shutdown_rx.await;
         })
         .await;
+}
+
+pub async fn unlink() {
+    let cache = cache::read_token_file();
 }
