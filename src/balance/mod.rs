@@ -32,10 +32,10 @@ pub async fn balance() {
             std::process::exit(1);
         });
 
-        println!("{}:\n", body.item.institution_name);
+        println!("\x1B[1m{}:\x1B[0m\n", body.item.institution_name);
         for account in body.accounts {
-            println!("  Account: {}", account.name);
-            println!("  Balance: {}", account.balances.current);
+            println!("  {}: ${}", account.name, account.balances.available);
         }
+        println!()
     }
 }
