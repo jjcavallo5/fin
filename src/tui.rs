@@ -3,12 +3,33 @@ use std::{
     process::Command,
 };
 
-pub fn tui(list: Vec<String>) {
-    for item in &list {
-        println!("{}", item);
+fn print_selected(item: &String) {
+    print!("\x1B[1m\x1B[32m{}\x1B[0m\r", item);
+}
+
+fn reset_line(item: &String) {
+    print!("\r\x1b[2K{}", item);
+}
+
+fn move_down() {
+    print!("\x1b[1B\r");
+}
+
+fn move_up() {
+    print!("\x1b[1A\r");
+}
+
+pub fn tui(list: Vec<String>) -> String {
+    for (i, item) in list.iter().enumerate() {
+        if i == 0 {
+            print_selected(item);
+            print!("\n");
+        } else {
+            println!("{}", item);
+        }
     }
     println!("Press q to quit");
-    print!("\x1b[{}A", list.len() + 1);
+    print!("\x1b[{}A\x1b[?25l", list.len() + 1); // Moves cursor to start & makes it invisible
     io::stdout().flush().unwrap();
 
     Command::new("stty")
@@ -25,22 +46,25 @@ pub fn tui(list: Vec<String>) {
             match buf[0] {
                 b'j' => {
                     if selected != list.len() - 1 {
-                        // move cursor down one line
-                        print!("\x1b[1B\r");
-                        stdout().flush().unwrap();
+                        reset_line(&list[selected]);
+                        move_down();
                         selected += 1;
+                        print_selected(&list[selected]);
+                        stdout().flush().unwrap();
                     }
                 }
                 b'k' => {
                     if selected != 0 {
-                        // move cursor up one line
-                        print!("\x1b[1A\r");
-                        stdout().flush().unwrap();
+                        reset_line(&list[selected]);
+                        move_up();
                         selected -= 1;
+                        print_selected(&list[selected]);
+                        stdout().flush().unwrap();
                     }
                 }
                 b'q' => {
-                    print!("\x1b[{}B\r", list.len() - selected);
+                    print!("\x1b[{}B\x1b[?25h\r", list.len() - selected); // Moves cursor to end and
+                                                                          // restores visibility
                     stdout().flush().unwrap();
                     break;
                 }
@@ -52,4 +76,6 @@ pub fn tui(list: Vec<String>) {
     })();
 
     let _ = Command::new("stty").args(["-raw", "echo"]).status();
+
+    return list[selected];
 }
