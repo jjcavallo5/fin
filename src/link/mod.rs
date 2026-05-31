@@ -48,5 +48,7 @@ pub async fn unlink() {
         .iter()
         .map(|item| item.item.institution_name.clone())
         .collect();
-    tui::tui(names)
+    let (_, idx) = tui::tui(names);
+
+    println!("{}", linked_items[idx].item.institution_name);
 }

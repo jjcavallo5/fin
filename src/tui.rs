@@ -19,7 +19,7 @@ fn move_up() {
     print!("\x1b[1A\r");
 }
 
-pub fn tui(list: Vec<String>) -> String {
+pub fn tui(list: Vec<String>) -> (String, usize) {
     for (i, item) in list.iter().enumerate() {
         if i == 0 {
             print_selected(item);
@@ -38,7 +38,8 @@ pub fn tui(list: Vec<String>) -> String {
         .unwrap();
 
     let mut selected = 0;
-    let result = (|| -> io::Result<()> {
+    let mut should_exit = false;
+    let _ = (|| -> io::Result<()> {
         loop {
             let mut buf = [0u8; 1];
             io::stdin().read_exact(&mut buf)?;
@@ -62,10 +63,15 @@ pub fn tui(list: Vec<String>) -> String {
                         stdout().flush().unwrap();
                     }
                 }
+                b'\r' | b'\n' => {
+                    print!("\x1b[{}B\x1b[?25h\r", list.len() - selected); // Moves cursor to end and
+                    stdout().flush().unwrap();
+                    break;
+                }
                 b'q' => {
                     print!("\x1b[{}B\x1b[?25h\r", list.len() - selected); // Moves cursor to end and
-                                                                          // restores visibility
                     stdout().flush().unwrap();
+                    should_exit = true;
                     break;
                 }
                 _ => {}
@@ -77,5 +83,9 @@ pub fn tui(list: Vec<String>) -> String {
 
     let _ = Command::new("stty").args(["-raw", "echo"]).status();
 
-    return list[selected];
+    if should_exit {
+        std::process::exit(1);
+    }
+
+    return (list[selected].clone(), selected);
 }
