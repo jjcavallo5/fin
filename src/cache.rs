@@ -43,3 +43,9 @@ pub fn save_encrypt_token(token: String) {
     cache.tokens.push(token);
     write_token_file(cache);
 }
+
+pub fn remove_token(token: String) {
+    let mut cache = read_token_file();
+    cache.tokens.retain(|t| t != &token);
+    write_token_file(cache);
+}

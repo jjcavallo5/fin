@@ -15,17 +15,17 @@ pub fn load_env() -> (String, String) {
     return (client_id, secret);
 }
 
-pub async fn get_linked_items() -> Vec<types::GetAccountResponse> {
+pub async fn get_linked_items() -> Vec<types::PlaidItem> {
     let (client_id, secret) = load_env();
     let token_cache = cache::read_token_file();
     let client = reqwest::Client::new();
-    let mut linked_items: Vec<types::GetAccountResponse> = vec![];
+    let mut linked_items: Vec<types::PlaidItem> = vec![];
 
     for token in token_cache.tokens {
         let request = types::GetAccountRequest {
             client_id: client_id.clone(),
             secret: secret.clone(),
-            access_token: token,
+            access_token: token.clone(),
         };
         let resp = client
             .post("https://sandbox.plaid.com/accounts/get")
@@ -43,7 +43,11 @@ pub async fn get_linked_items() -> Vec<types::GetAccountResponse> {
             std::process::exit(1);
         });
 
-        linked_items.push(body)
+        linked_items.push(types::PlaidItem {
+            access_token: token.clone(),
+            accounts: body.accounts,
+            item: body.item,
+        })
     }
 
     return linked_items;

@@ -33,3 +33,9 @@ pub struct GetAccountResponse {
     pub item: Item,
     pub request_id: String,
 }
+
+pub struct PlaidItem {
+    pub accounts: Vec<Account>,
+    pub item: Item,
+    pub access_token: String,
+}

@@ -39,6 +39,13 @@ pub struct TokenExchangeResponse {
     pub access_token: String,
 }
 
+#[derive(Serialize)]
+pub struct RemoveAccountRequest {
+    pub client_id: String,
+    pub secret: String,
+    pub access_token: String,
+}
+
 pub struct LinkServerState {
     pub shutdown_tx: std::sync::Arc<Mutex<Option<oneshot::Sender<()>>>>,
 }

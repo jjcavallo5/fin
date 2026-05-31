@@ -1,3 +1,4 @@
+use crate::cache;
 use crate::plaid;
 use crate::tui;
 use crate::utils;
@@ -50,5 +51,26 @@ pub async fn unlink() {
         .collect();
     let (_, idx) = tui::tui(names);
 
-    println!("{}", linked_items[idx].item.institution_name);
+    let (client_id, secret) = plaid::load_env();
+    let request = types::RemoveAccountRequest {
+        client_id,
+        secret,
+        access_token: linked_items[idx].access_token.clone(),
+    };
+    let client = reqwest::Client::new();
+    client
+        .post("https://sandbox.plaid.com/item/remove")
+        .json(&request)
+        .send()
+        .await
+        .unwrap_or_else(|_| {
+            utils::print_error("failed to remove token");
+            std::process::exit(1)
+        });
+
+    cache::remove_token(linked_items[idx].access_token.clone());
+    utils::print_success(&format!(
+        "{} removed successfully.",
+        linked_items[idx].item.institution_name,
+    ))
 }

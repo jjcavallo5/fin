@@ -19,6 +19,7 @@ enum Commands {
     Link,
     Unlink,
     Balance,
+    List,
 }
 
 #[tokio::main]
@@ -29,5 +30,6 @@ async fn main() {
         Commands::Link => link::link().await,
         Commands::Unlink => link::unlink().await,
         Commands::Balance => balance::balance().await,
+        Commands::List => link::list().await,
     }
 }
