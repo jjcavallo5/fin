@@ -74,3 +74,10 @@ pub async fn unlink() {
         linked_items[idx].item.institution_name,
     ))
 }
+
+pub async fn list() {
+    let linked_items = plaid::get_linked_items().await;
+    linked_items
+        .iter()
+        .for_each(|item| println!("{}", item.item.institution_name));
+}
