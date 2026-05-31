@@ -15,11 +15,8 @@ pub struct Balance {
 
 #[derive(Deserialize)]
 pub struct Account {
-    pub account_id: String,
     pub balances: Balance,
     pub name: String,
-    pub official_name: String,
-    pub subtype: String,
 }
 
 #[derive(Deserialize)]
@@ -31,7 +28,6 @@ pub struct Item {
 pub struct GetAccountResponse {
     pub accounts: Vec<Account>,
     pub item: Item,
-    pub request_id: String,
 }
 
 pub struct PlaidItem {

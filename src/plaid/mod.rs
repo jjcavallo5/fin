@@ -1,14 +1,14 @@
 use crate::cache;
-use crate::utils;
+use crate::logging;
 mod types;
 
 pub fn load_env() -> (String, String) {
     let client_id = std::env::var("PLAID_CLIENT_ID").unwrap_or_else(|_e| {
-        utils::print_error("PLAID_CLIENT_ID environment variable not set");
+        logging::error("PLAID_CLIENT_ID environment variable not set");
         std::process::exit(1);
     });
     let secret = std::env::var("PLAID_SECRET").unwrap_or_else(|_e| {
-        utils::print_error("PLAID_SECRET environment variable not set");
+        logging::error("PLAID_SECRET environment variable not set");
         std::process::exit(1);
     });
 
@@ -34,12 +34,12 @@ pub async fn get_linked_items() -> Vec<types::PlaidItem> {
             .send()
             .await
             .unwrap_or_else(|_| {
-                utils::print_error("failed to create link token");
+                logging::error("failed to create link token");
                 std::process::exit(1);
             });
 
         let body: types::GetAccountResponse = resp.json().await.unwrap_or_else(|_| {
-            utils::print_error("Balance response was malformed");
+            logging::error("Balance response was malformed");
             std::process::exit(1);
         });
 

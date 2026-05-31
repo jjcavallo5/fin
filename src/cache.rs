@@ -1,4 +1,4 @@
-use crate::utils;
+use crate::logging;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -16,6 +16,7 @@ fn get_token_cache_path() -> PathBuf {
 fn write_token_file(cache: EncryptedTokenCache) {
     let file_path = get_token_cache_path();
     let file_contents = serde_json::to_string_pretty(&cache).expect("Failed to read tokens file");
+    logging::info("encrypting tokens");
     let encrypted_contents =
         keycrypt::encrypt(file_contents).expect("Failed to encrypt token file");
     std::fs::write(&file_path, encrypted_contents).expect("Failed to write token file");
@@ -27,8 +28,9 @@ pub fn read_token_file() -> EncryptedTokenCache {
 
     match file_res {
         Ok(contents) => {
+            logging::info("decrypting tokens");
             let decrypted_contents = keycrypt::decrypt(contents).unwrap_or_else(|_| {
-                utils::print_error("failed to load existing connections.");
+                logging::error("failed to load existing connections.");
                 std::process::exit(1);
             });
             return serde_json::from_str(&decrypted_contents)

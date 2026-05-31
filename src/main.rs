@@ -3,9 +3,9 @@ use tokio;
 mod balance;
 mod cache;
 mod link;
+mod logging;
 mod plaid;
 mod tui;
-mod utils;
 
 #[derive(Parser, Debug)]
 #[command(name = "fin")]

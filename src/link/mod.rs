@@ -1,7 +1,7 @@
 use crate::cache;
+use crate::logging;
 use crate::plaid;
 use crate::tui;
-use crate::utils;
 use axum::{
     routing::{get, post},
     Router,
@@ -33,7 +33,7 @@ pub async fn link() {
     // Serve & open web browser to url
     let url = format!("http://127.0.0.1:{}", addr.port());
     webbrowser::open(&url).unwrap_or_else(|_| {
-        utils::print_error("failed to launch browser");
+        logging::error("failed to launch browser");
         std::process::exit(1);
     });
     let _ = axum::serve(listener, router)
@@ -64,12 +64,12 @@ pub async fn unlink() {
         .send()
         .await
         .unwrap_or_else(|_| {
-            utils::print_error("failed to remove token");
+            logging::error("failed to remove token");
             std::process::exit(1)
         });
 
     cache::remove_token(linked_items[idx].access_token.clone());
-    utils::print_success(&format!(
+    logging::success(&format!(
         "{} removed successfully.",
         linked_items[idx].item.institution_name,
     ))
