@@ -5,6 +5,7 @@ mod cache;
 mod link;
 mod logging;
 mod plaid;
+mod plan;
 mod tui;
 
 #[derive(Parser, Debug)]
@@ -20,6 +21,15 @@ enum Commands {
     Unlink,
     Balance,
     List,
+    Plan {
+        #[command(subcommand)]
+        command: PlanSubcommands,
+    },
+}
+
+#[derive(Subcommand, Debug)]
+enum PlanSubcommands {
+    Create,
 }
 
 #[tokio::main]
@@ -31,5 +41,8 @@ async fn main() {
         Commands::Unlink => link::unlink().await,
         Commands::Balance => balance::balance().await,
         Commands::List => link::list().await,
+        Commands::Plan { command } => match command {
+            PlanSubcommands::Create => plan::create().await,
+        },
     }
 }
