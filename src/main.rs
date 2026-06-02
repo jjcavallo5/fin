@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use tokio;
 mod balance;
 mod cache;
+mod db;
 mod link;
 mod logging;
 mod plaid;
@@ -35,6 +36,7 @@ enum PlanSubcommands {
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
+    let db = db::get_db().await;
 
     match &args.command {
         Commands::Link => link::link().await,
