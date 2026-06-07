@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-#[derive(EnumIter, DeriveActiveEnum)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
 #[sea_orm(
     rs_type = "String",
     db_type = "String(StringLen::None)",
@@ -13,7 +13,7 @@ pub enum PlanType {
 #[sea_orm::model]
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "plans")]
-pub struct Plan {
+pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
