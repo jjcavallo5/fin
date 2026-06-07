@@ -1,0 +1,24 @@
+use sea_orm::entity::prelude::*;
+
+#[derive(EnumIter, DeriveActiveEnum)]
+#[sea_orm(
+    rs_type = "String",
+    db_type = "String(StringLen::None)",
+    rename_all = "snake_case"
+)]
+pub enum PlanType {
+    Recurring,
+}
+
+#[sea_orm::model]
+#[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
+#[sea_orm(table_name = "plans")]
+pub struct Plan {
+    #[sea_orm(primary_key)]
+    pub id: i32,
+    pub name: String,
+    pub plan_type: PlanType,
+    pub created_at: DateTime,
+}
+
+impl ActiveModelBehavior for ActiveModel {}
