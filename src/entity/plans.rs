@@ -19,6 +19,9 @@ pub struct Model {
     pub name: String,
     pub plan_type: PlanType,
     pub created_at: DateTime,
+
+    #[sea_orm(has_many)]
+    pub plan_liability_rules: HasMany<super::plan_liability_rules::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
