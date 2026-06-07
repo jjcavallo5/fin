@@ -22,6 +22,10 @@ pub struct Model {
 
     #[sea_orm(has_many)]
     pub plan_liability_rules: HasMany<super::plan_liability_rules::Entity>,
+    #[sea_orm(has_many)]
+    pub plan_excess_allocation_rules: HasMany<super::plan_excess_allocation_rules::Entity>,
+    #[sea_orm(has_many)]
+    pub asset_balance_rules: HasMany<super::asset_balance_rules::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -11,7 +11,11 @@ pub struct Model {
     pub token: String,
 
     #[sea_orm(has_one)]
-    pub liability_payments: HasOne<super::plan_liability_rules::Entity>,
+    pub liability_rule: HasOne<super::plan_liability_rules::Entity>,
+    #[sea_orm(has_one)]
+    pub plan_asset_allocation_rule: HasOne<super::plan_excess_allocation_rules::Entity>,
+    #[sea_orm(has_one)]
+    pub asset_balance_rules: HasOne<super::asset_balance_rules::Entity>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
