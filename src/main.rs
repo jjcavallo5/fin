@@ -37,7 +37,6 @@ enum PlanSubcommands {
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
-    let db = db::get_db().await;
 
     match &args.command {
         Commands::Link => link::link().await,
