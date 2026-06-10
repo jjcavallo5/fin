@@ -30,6 +30,8 @@ enum Commands {
         #[command(subcommand)]
         command: PlanSubcommands,
     },
+    Quit,
+    Stop,
     Unlink,
 }
 
@@ -52,6 +54,8 @@ async fn main() {
         Commands::Plan { command } => match command {
             PlanSubcommands::Create => plan::create().await,
         },
+        Commands::Quit => daemon::quit(),
+        Commands::Stop => daemon::quit(),
         Commands::Unlink => link::unlink().await,
     }
 }

@@ -1,21 +1,50 @@
 use crate::logging;
-use std::io::Write;
+use serde::{Deserialize, Serialize};
+use std::io::{Read, Write};
 
 const SOCKET_PTH: &str = "/tmp/fin.sock";
 
+#[derive(Debug, Serialize, Deserialize)]
+enum DaemonRequest {
+    Ping,
+    Stop,
+}
+
+fn handle_request(buffer: Vec<u8>) -> bool {
+    let decoded_req: DaemonRequest = serde_json::from_slice(&buffer).unwrap();
+    logging::success(format!("daemon received: {:?}", decoded_req).as_str());
+
+    match decoded_req {
+        DaemonRequest::Ping => {
+            logging::success("connection to daemon successful");
+            return false;
+        }
+        DaemonRequest::Stop => {
+            return true;
+        }
+    }
+}
+
 pub fn run_daemon() {
+    std::fs::remove_file(SOCKET_PTH).ok();
     let listener = match std::os::unix::net::UnixListener::bind(SOCKET_PTH) {
         Ok(proc) => proc,
         Err(_) => {
-            logging::error("failed to start unix listened");
+            logging::error("failed to start unix listener");
             std::process::exit(1)
         }
     };
 
     loop {
         match listener.accept() {
-            Ok((socket, address)) => {
-                logging::success(format!("socket: {:?}, address: {:?}", socket, address).as_str())
+            Ok((mut socket, _)) => {
+                let mut buffer: Vec<u8> = Vec::new();
+                socket.read_to_end(&mut buffer).unwrap();
+                let should_break = handle_request(buffer);
+
+                if should_break {
+                    break;
+                }
             }
             Err(_) => break,
         }
@@ -28,6 +57,22 @@ pub fn login() {
     spawn_daemon();
 }
 
+pub fn quit() {
+    let mut stream = match std::os::unix::net::UnixStream::connect(SOCKET_PTH) {
+        Ok(str) => str,
+        Err(_) => {
+            logging::error("daemon not running");
+            std::process::exit(1);
+        }
+    };
+
+    let bytes = serde_json::to_vec(&DaemonRequest::Stop).unwrap();
+    match stream.write_all(&bytes) {
+        Ok(_) => logging::success("exited daemon"),
+        Err(_) => logging::error("failed to quit daemon"),
+    }
+}
+
 pub fn ping() {
     let mut stream = match std::os::unix::net::UnixStream::connect(SOCKET_PTH) {
         Ok(str) => str,
@@ -37,7 +82,7 @@ pub fn ping() {
         }
     };
 
-    let bytes = serde_json::to_vec("PING").unwrap();
+    let bytes = serde_json::to_vec(&DaemonRequest::Ping).unwrap();
     match stream.write_all(&bytes) {
         Ok(_) => logging::success("connection to daemon successful"),
         Err(_) => logging::error("failed to ping daemon"),
