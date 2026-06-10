@@ -2,6 +2,8 @@ use clap::{Parser, Subcommand};
 use tokio;
 mod balance;
 mod cache;
+mod db;
+mod entity;
 mod link;
 mod logging;
 mod plaid;
