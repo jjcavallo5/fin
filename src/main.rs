@@ -2,6 +2,7 @@ use clap::{Parser, Subcommand};
 use tokio;
 mod balance;
 mod cache;
+mod daemon;
 mod db;
 mod entity;
 mod link;
@@ -19,14 +20,16 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    Link,
-    Unlink,
     Balance,
+    Daemon,
+    Link,
+    Login,
     List,
     Plan {
         #[command(subcommand)]
         command: PlanSubcommands,
     },
+    Unlink,
 }
 
 #[derive(Subcommand, Debug)]
@@ -39,12 +42,14 @@ async fn main() {
     let args = Cli::parse();
 
     match &args.command {
-        Commands::Link => link::link().await,
-        Commands::Unlink => link::unlink().await,
         Commands::Balance => balance::balance().await,
+        Commands::Daemon => daemon::run_daemon(),
+        Commands::Link => link::link().await,
         Commands::List => link::list().await,
+        Commands::Login => daemon::login(),
         Commands::Plan { command } => match command {
             PlanSubcommands::Create => plan::create().await,
         },
+        Commands::Unlink => link::unlink().await,
     }
 }
