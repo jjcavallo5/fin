@@ -25,6 +25,7 @@ enum Commands {
     Link,
     Login,
     List,
+    Ping,
     Plan {
         #[command(subcommand)]
         command: PlanSubcommands,
@@ -47,6 +48,7 @@ async fn main() {
         Commands::Link => link::link().await,
         Commands::List => link::list().await,
         Commands::Login => daemon::login(),
+        Commands::Ping => daemon::ping(),
         Commands::Plan { command } => match command {
             PlanSubcommands::Create => plan::create().await,
         },
