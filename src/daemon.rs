@@ -54,6 +54,11 @@ pub fn run_daemon() {
 }
 
 pub fn login() {
+    println!("Enter password: ");
+    let mut buffer = String::new();
+    std::io::stdin()
+        .read_line(&mut buffer)
+        .expect("Incorrect password");
     spawn_daemon();
 }
 
