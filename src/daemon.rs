@@ -8,15 +8,22 @@ const SOCKET_PTH: &str = "/tmp/fin.sock";
 enum DaemonRequest {
     Ping,
     Stop,
+    Login { pass: String },
 }
 
 fn handle_request(buffer: Vec<u8>) -> bool {
     let decoded_req: DaemonRequest = serde_json::from_slice(&buffer).unwrap();
     logging::success(format!("daemon received: {:?}", decoded_req).as_str());
 
+    let mut password = String::new();
+
     match decoded_req {
         DaemonRequest::Ping => {
             logging::success("connection to daemon successful");
+            return false;
+        }
+        DaemonRequest::Login { pass } => {
+            password = pass;
             return false;
         }
         DaemonRequest::Stop => {
