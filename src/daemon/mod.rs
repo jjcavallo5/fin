@@ -1,28 +1,19 @@
 mod handlers;
+mod types;
 use crate::logging;
-use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
 
 const SOCKET_PTH: &str = "/tmp/fin.sock";
 
-#[derive(Debug, Serialize, Deserialize)]
-enum DaemonRequest {
-    Ping,
-    Stop,
-    Login { pass: String },
-    Encrypt { token: String },
-    Decrypt { token: String },
-}
-
 fn handle_request(buffer: Vec<u8>, password: &mut String) -> bool {
-    let decoded_req: DaemonRequest = serde_json::from_slice(&buffer).unwrap();
+    let decoded_req: types::DaemonRequest = serde_json::from_slice(&buffer).unwrap();
 
     let should_exit = match decoded_req {
-        DaemonRequest::Ping => handlers::ping(),
-        DaemonRequest::Login { pass } => handlers::login(pass, password),
-        DaemonRequest::Stop => handlers::stop(),
-        DaemonRequest::Encrypt { token } => handlers::encrypt(token, password),
-        DaemonRequest::Decrypt { token } => handlers::decrypt(token, password),
+        types::DaemonRequest::Ping => handlers::ping(),
+        types::DaemonRequest::Login { pass } => handlers::login(pass, password),
+        types::DaemonRequest::Stop => handlers::stop(),
+        types::DaemonRequest::Encrypt { token } => handlers::encrypt(token, password),
+        types::DaemonRequest::Decrypt { token } => handlers::decrypt(token, password),
     };
 
     return should_exit;
@@ -79,7 +70,7 @@ pub fn login() {
 
     // Send login request with password
     let mut stream = connect();
-    let req = DaemonRequest::Login {
+    let req = types::DaemonRequest::Login {
         pass: buffer.trim().to_string(),
     };
     let bytes = serde_json::to_vec(&req).unwrap();
@@ -92,7 +83,7 @@ pub fn login() {
 pub fn quit() {
     let mut stream = connect();
 
-    let bytes = serde_json::to_vec(&DaemonRequest::Stop).unwrap();
+    let bytes = serde_json::to_vec(&types::DaemonRequest::Stop).unwrap();
     match stream.write_all(&bytes) {
         Ok(_) => logging::success("exited daemon"),
         Err(_) => logging::error("failed to quit daemon"),
@@ -102,7 +93,7 @@ pub fn quit() {
 pub fn ping() {
     let mut stream = connect();
 
-    let bytes = serde_json::to_vec(&DaemonRequest::Ping).unwrap();
+    let bytes = serde_json::to_vec(&types::DaemonRequest::Ping).unwrap();
     match stream.write_all(&bytes) {
         Ok(_) => logging::success("connection to daemon successful"),
         Err(_) => logging::error("failed to ping daemon"),
@@ -134,6 +125,6 @@ pub fn spawn_daemon() {
 pub fn encrypt_token(token: String) -> String {
     let mut stream = connect();
 
-    let req = DaemonRequest::Encrypt { token };
+    let req = types::DaemonRequest::Encrypt { token };
     let bytes = serde_json::to_vec(&req).unwrap();
 }
