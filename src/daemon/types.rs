@@ -8,3 +8,11 @@ pub enum DaemonRequest {
     Encrypt { token: String },
     Decrypt { token: String },
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum DaemonResponse {
+    Ok,
+    Quit,
+    Data { token: String },
+    Error { message: String },
+}

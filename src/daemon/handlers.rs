@@ -1,26 +1,27 @@
+use crate::daemon::types;
 use crate::logging;
 
-pub fn ping() -> bool {
+pub fn ping() -> types::DaemonResponse {
     logging::success("connection to daemon successful");
-    return false;
+    return types::DaemonResponse::Ok;
 }
 
-pub fn login(pass: String, password: &mut String) -> bool {
+pub fn login(pass: String, password: &mut String) -> types::DaemonResponse {
     password.clear();
     password.push_str(pass.as_str());
-    return false;
+    return types::DaemonResponse::Ok;
 }
 
-pub fn stop() -> bool {
-    true
+pub fn stop() -> types::DaemonResponse {
+    return types::DaemonResponse::Quit;
 }
 
-pub fn encrypt(token: String, password: &String) -> bool {
+pub fn encrypt(token: String, password: &String) -> types::DaemonResponse {
     logging::info(format!("token: {}, pass: {}", token, password).as_str());
-    return false;
+    return types::DaemonResponse::Data { token };
 }
 
-pub fn decrypt(token: String, password: &String) -> bool {
+pub fn decrypt(token: String, password: &String) -> types::DaemonResponse {
     logging::info(format!("token: {}, pass: {}", token, password).as_str());
-    return false;
+    return types::DaemonResponse::Data { token };
 }

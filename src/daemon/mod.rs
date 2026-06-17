@@ -5,7 +5,7 @@ use std::io::{Read, Write};
 
 const SOCKET_PTH: &str = "/tmp/fin.sock";
 
-fn handle_request(buffer: Vec<u8>, password: &mut String) -> bool {
+fn handle_request(buffer: Vec<u8>, password: &mut String) -> types::DaemonResponse {
     let decoded_req: types::DaemonRequest = serde_json::from_slice(&buffer).unwrap();
 
     let should_exit = match decoded_req {
@@ -36,10 +36,11 @@ pub fn run_daemon() {
             Ok((mut socket, _)) => {
                 let mut buffer: Vec<u8> = Vec::new();
                 socket.read_to_end(&mut buffer).unwrap();
-                let should_break = handle_request(buffer, &mut password);
-
-                if should_break {
-                    break;
+                match handle_request(buffer, &mut password) {
+                    types::DaemonResponse::Ok => logging::success("ok"),
+                    types::DaemonResponse::Error { message } => logging::error(&message),
+                    types::DaemonResponse::Data { token } => logging::success(&token),
+                    types::DaemonResponse::Quit => break,
                 }
             }
             Err(_) => break,
@@ -127,4 +128,5 @@ pub fn encrypt_token(token: String) -> String {
 
     let req = types::DaemonRequest::Encrypt { token };
     let bytes = serde_json::to_vec(&req).unwrap();
+    return String::new();
 }
