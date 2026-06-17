@@ -5,11 +5,17 @@ pub fn ping() -> bool {
     return false;
 }
 
-pub fn login(pass: String, mut password: String) -> bool {
-    password = pass;
+pub fn login(pass: String, password: &mut String) -> bool {
+    password.clear();
+    password.push_str(pass.as_str());
     return false;
 }
 
 pub fn stop() -> bool {
     true
+}
+
+pub fn temp_print_password(password: &String) -> bool {
+    logging::success(format!("stored: {}", password).as_str());
+    return false;
 }

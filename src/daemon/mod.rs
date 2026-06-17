@@ -10,18 +10,18 @@ enum DaemonRequest {
     Ping,
     Stop,
     Login { pass: String },
+    Password,
 }
 
-fn handle_request(buffer: Vec<u8>) -> bool {
+fn handle_request(buffer: Vec<u8>, password: &mut String) -> bool {
     let decoded_req: DaemonRequest = serde_json::from_slice(&buffer).unwrap();
     logging::success(format!("daemon received: {:?}", decoded_req).as_str());
-
-    let mut password = String::new();
 
     let should_exit = match decoded_req {
         DaemonRequest::Ping => handlers::ping(),
         DaemonRequest::Login { pass } => handlers::login(pass, password),
         DaemonRequest::Stop => handlers::stop(),
+        DaemonRequest::Password => handlers::temp_print_password(password),
     };
 
     return should_exit;
@@ -37,12 +37,14 @@ pub fn run_daemon() {
         }
     };
 
+    let mut password = String::new();
+
     loop {
         match listener.accept() {
             Ok((mut socket, _)) => {
                 let mut buffer: Vec<u8> = Vec::new();
                 socket.read_to_end(&mut buffer).unwrap();
-                let should_break = handle_request(buffer);
+                let should_break = handle_request(buffer, &mut password);
 
                 if should_break {
                     break;
@@ -55,23 +57,39 @@ pub fn run_daemon() {
     logging::info("exiting daemon...")
 }
 
+fn connect() -> std::os::unix::net::UnixStream {
+    return match std::os::unix::net::UnixStream::connect(SOCKET_PTH) {
+        Ok(str) => str,
+        Err(_) => {
+            logging::error("connection failed");
+            std::process::exit(1);
+        }
+    };
+}
+
 pub fn login() {
+    // Get password
+    spawn_daemon();
     println!("Enter password: ");
     let mut buffer = String::new();
     std::io::stdin()
         .read_line(&mut buffer)
         .expect("Incorrect password");
-    spawn_daemon();
+
+    // Send login request with password
+    let mut stream = connect();
+    let req = DaemonRequest::Login {
+        pass: buffer.trim().to_string(),
+    };
+    let bytes = serde_json::to_vec(&req).unwrap();
+    stream.write_all(&bytes).unwrap_or_else(|_| {
+        logging::error("failed to login");
+        std::process::exit(1);
+    });
 }
 
 pub fn quit() {
-    let mut stream = match std::os::unix::net::UnixStream::connect(SOCKET_PTH) {
-        Ok(str) => str,
-        Err(_) => {
-            logging::error("daemon not running");
-            std::process::exit(1);
-        }
-    };
+    let mut stream = connect();
 
     let bytes = serde_json::to_vec(&DaemonRequest::Stop).unwrap();
     match stream.write_all(&bytes) {
@@ -81,13 +99,7 @@ pub fn quit() {
 }
 
 pub fn ping() {
-    let mut stream = match std::os::unix::net::UnixStream::connect(SOCKET_PTH) {
-        Ok(str) => str,
-        Err(_) => {
-            logging::error("ping failed");
-            std::process::exit(1);
-        }
-    };
+    let mut stream = connect();
 
     let bytes = serde_json::to_vec(&DaemonRequest::Ping).unwrap();
     match stream.write_all(&bytes) {
@@ -115,5 +127,15 @@ pub fn spawn_daemon() {
             logging::error("failed to start daemon");
             std::process::exit(1);
         }
+    }
+}
+
+pub fn temp_password() {
+    let mut stream = connect();
+
+    let bytes = serde_json::to_vec(&DaemonRequest::Password).unwrap();
+    match stream.write_all(&bytes) {
+        Ok(_) => logging::success("connection to daemon successful"),
+        Err(_) => logging::error("failed to ping daemon"),
     }
 }
