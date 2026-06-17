@@ -33,7 +33,6 @@ enum Commands {
     Quit,
     Stop,
     Unlink,
-    Password,
 }
 
 #[derive(Subcommand, Debug)]
@@ -57,7 +56,6 @@ async fn main() {
         },
         Commands::Quit => daemon::quit(),
         Commands::Stop => daemon::quit(),
-        Commands::Password => daemon::temp_password(),
         Commands::Unlink => link::unlink().await,
     }
 }

@@ -14,8 +14,3 @@ pub fn login(pass: String, password: &mut String) -> bool {
 pub fn stop() -> bool {
     true
 }
-
-pub fn temp_print_password(password: &String) -> bool {
-    logging::success(format!("stored: {}", password).as_str());
-    return false;
-}

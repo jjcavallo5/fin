@@ -10,7 +10,6 @@ enum DaemonRequest {
     Ping,
     Stop,
     Login { pass: String },
-    Password,
 }
 
 fn handle_request(buffer: Vec<u8>, password: &mut String) -> bool {
@@ -21,7 +20,6 @@ fn handle_request(buffer: Vec<u8>, password: &mut String) -> bool {
         DaemonRequest::Ping => handlers::ping(),
         DaemonRequest::Login { pass } => handlers::login(pass, password),
         DaemonRequest::Stop => handlers::stop(),
-        DaemonRequest::Password => handlers::temp_print_password(password),
     };
 
     return should_exit;
@@ -127,15 +125,5 @@ pub fn spawn_daemon() {
             logging::error("failed to start daemon");
             std::process::exit(1);
         }
-    }
-}
-
-pub fn temp_password() {
-    let mut stream = connect();
-
-    let bytes = serde_json::to_vec(&DaemonRequest::Password).unwrap();
-    match stream.write_all(&bytes) {
-        Ok(_) => logging::success("connection to daemon successful"),
-        Err(_) => logging::error("failed to ping daemon"),
     }
 }
