@@ -39,7 +39,14 @@ pub fn run_daemon() {
                 match handle_request(buffer, &mut password) {
                     types::DaemonResponse::Ok => logging::success("ok"),
                     types::DaemonResponse::Error { message } => logging::error(&message),
-                    types::DaemonResponse::Data { token } => logging::success(&token),
+                    types::DaemonResponse::Data { token } => {
+                        let req = types::DaemonTokenResponse { token };
+                        let bytes = serde_json::to_vec(&req).unwrap();
+                        socket.write_all(&bytes).unwrap_or_else(|_| {
+                            logging::error("failed to return token");
+                            std::process::exit(1);
+                        });
+                    }
                     types::DaemonResponse::Quit => break,
                 }
             }
@@ -128,5 +135,12 @@ pub fn encrypt_token(token: String) -> String {
 
     let req = types::DaemonRequest::Encrypt { token };
     let bytes = serde_json::to_vec(&req).unwrap();
-    return String::new();
+    stream.write_all(&bytes).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+
+    let mut buffer = Vec::new();
+    stream.read_to_end(&mut buffer).unwrap();
+
+    let response: types::DaemonTokenResponse = serde_json::from_slice(&buffer).unwrap();
+    return response.token;
 }

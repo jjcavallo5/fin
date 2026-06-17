@@ -18,7 +18,12 @@ pub fn stop() -> types::DaemonResponse {
 
 pub fn encrypt(token: String, password: &String) -> types::DaemonResponse {
     logging::info(format!("token: {}, pass: {}", token, password).as_str());
-    return types::DaemonResponse::Data { token };
+    let mut encrypted_token = String::new();
+    encrypted_token.push_str(&token);
+    encrypted_token.push_str("ASLKFJAKSJFLASJF");
+    return types::DaemonResponse::Data {
+        token: encrypted_token,
+    };
 }
 
 pub fn decrypt(token: String, password: &String) -> types::DaemonResponse {

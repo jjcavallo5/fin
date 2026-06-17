@@ -9,10 +9,15 @@ pub enum DaemonRequest {
     Decrypt { token: String },
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub enum DaemonResponse {
     Ok,
     Quit,
     Data { token: String },
     Error { message: String },
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DaemonTokenResponse {
+    pub token: String,
 }

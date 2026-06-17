@@ -33,6 +33,7 @@ enum Commands {
     Quit,
     Stop,
     Unlink,
+    Encrypt,
 }
 
 #[derive(Subcommand, Debug)]
@@ -57,5 +58,11 @@ async fn main() {
         Commands::Quit => daemon::quit(),
         Commands::Stop => daemon::quit(),
         Commands::Unlink => link::unlink().await,
+        Commands::Encrypt => {
+            let mut token = String::new();
+            token.push_str("hullo?");
+            let encrypted = daemon::encrypt_token(token);
+            logging::info(format!("response: {}", encrypted).as_str());
+        }
     }
 }
