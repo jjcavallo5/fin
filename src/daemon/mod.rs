@@ -1,3 +1,4 @@
+mod handlers;
 use crate::logging;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
@@ -17,19 +18,13 @@ fn handle_request(buffer: Vec<u8>) -> bool {
 
     let mut password = String::new();
 
-    match decoded_req {
-        DaemonRequest::Ping => {
-            logging::success("connection to daemon successful");
-            return false;
-        }
-        DaemonRequest::Login { pass } => {
-            password = pass;
-            return false;
-        }
-        DaemonRequest::Stop => {
-            return true;
-        }
-    }
+    let should_exit = match decoded_req {
+        DaemonRequest::Ping => handlers::ping(),
+        DaemonRequest::Login { pass } => handlers::login(pass, password),
+        DaemonRequest::Stop => handlers::stop(),
+    };
+
+    return should_exit;
 }
 
 pub fn run_daemon() {
