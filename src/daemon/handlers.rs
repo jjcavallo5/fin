@@ -20,7 +20,7 @@ pub fn encrypt(token: String, password: &String) -> types::DaemonResponse {
     logging::info(format!("token: {}, pass: {}", token, password).as_str());
     let mut encrypted_token = String::new();
     encrypted_token.push_str(&token);
-    encrypted_token.push_str("ASLKFJAKSJFLASJF");
+    encrypted_token.push_str(&password);
     return types::DaemonResponse::Data {
         token: encrypted_token,
     };
@@ -28,5 +28,9 @@ pub fn encrypt(token: String, password: &String) -> types::DaemonResponse {
 
 pub fn decrypt(token: String, password: &String) -> types::DaemonResponse {
     logging::info(format!("token: {}, pass: {}", token, password).as_str());
-    return types::DaemonResponse::Data { token };
+    let mut decrypted_token = String::new();
+    decrypted_token.push_str(&token);
+    return types::DaemonResponse::Data {
+        token: decrypted_token.replace(password, ""),
+    };
 }

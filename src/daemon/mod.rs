@@ -144,3 +144,18 @@ pub fn encrypt_token(token: String) -> String {
     let response: types::DaemonTokenResponse = serde_json::from_slice(&buffer).unwrap();
     return response.token;
 }
+
+pub fn decrypt_token(token: String) -> String {
+    let mut stream = connect();
+
+    let req = types::DaemonRequest::Decrypt { token };
+    let bytes = serde_json::to_vec(&req).unwrap();
+    stream.write_all(&bytes).unwrap();
+    stream.shutdown(std::net::Shutdown::Write).unwrap();
+
+    let mut buffer = Vec::new();
+    stream.read_to_end(&mut buffer).unwrap();
+
+    let response: types::DaemonTokenResponse = serde_json::from_slice(&buffer).unwrap();
+    return response.token;
+}
