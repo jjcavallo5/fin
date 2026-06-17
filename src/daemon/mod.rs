@@ -10,16 +10,19 @@ enum DaemonRequest {
     Ping,
     Stop,
     Login { pass: String },
+    Encrypt { token: String },
+    Decrypt { token: String },
 }
 
 fn handle_request(buffer: Vec<u8>, password: &mut String) -> bool {
     let decoded_req: DaemonRequest = serde_json::from_slice(&buffer).unwrap();
-    logging::success(format!("daemon received: {:?}", decoded_req).as_str());
 
     let should_exit = match decoded_req {
         DaemonRequest::Ping => handlers::ping(),
         DaemonRequest::Login { pass } => handlers::login(pass, password),
         DaemonRequest::Stop => handlers::stop(),
+        DaemonRequest::Encrypt { token } => handlers::encrypt(token, password),
+        DaemonRequest::Decrypt { token } => handlers::decrypt(token, password),
     };
 
     return should_exit;
@@ -126,4 +129,11 @@ pub fn spawn_daemon() {
             std::process::exit(1);
         }
     }
+}
+
+pub fn encrypt_token(token: String) -> String {
+    let mut stream = connect();
+
+    let req = DaemonRequest::Encrypt { token };
+    let bytes = serde_json::to_vec(&req).unwrap();
 }
