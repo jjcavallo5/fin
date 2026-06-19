@@ -7,8 +7,11 @@ pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
     pub name: String,
+    #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
-    pub token: String,
+    pub nonce: String,
+    #[sea_orm(unique)]
+    pub encrypted_token: String,
 
     #[sea_orm(has_one)]
     pub plan_liability_rules: HasOne<super::plan_liability_rules::Entity>,

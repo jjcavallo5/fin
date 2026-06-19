@@ -6,6 +6,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
     pub minimum_balance_cents: i32,
 

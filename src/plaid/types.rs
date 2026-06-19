@@ -35,3 +35,8 @@ pub struct PlaidItem {
     pub item: Item,
     pub access_token: String,
 }
+
+pub struct LinkedAssetAccount {
+    pub asset_account_id: i32,
+    pub plaid_item: PlaidItem,
+}

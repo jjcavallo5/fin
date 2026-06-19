@@ -18,6 +18,7 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub plan_type: PlanType,
+    #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
 
     #[sea_orm(has_many)]
