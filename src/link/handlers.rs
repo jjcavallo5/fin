@@ -47,12 +47,14 @@ pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
 }
 
 async fn save_asset_account(
-    account: plaid::types::PlaidItem,
+    account: &plaid::types::Account,
+    instituion_name: String,
     nonce: String,
     ciphertext: String,
 ) -> Result<(), sea_orm::DbErr> {
     let acct_entry = entity::asset_accounts::ActiveModel {
-        name: sea_orm::ActiveValue::Set(account.item.institution_name),
+        institution_name: sea_orm::ActiveValue::Set(instituion_name),
+        name: sea_orm::ActiveValue::Set(account.name.clone()),
         nonce: sea_orm::ActiveValue::Set(nonce),
         encrypted_token: sea_orm::ActiveValue::Set(ciphertext),
         ..Default::default()
@@ -62,12 +64,14 @@ async fn save_asset_account(
 }
 
 async fn save_liability_account(
-    account: plaid::types::PlaidItem,
+    account: &plaid::types::Account,
+    instituion_name: String,
     nonce: String,
     ciphertext: String,
 ) -> Result<(), sea_orm::DbErr> {
     let acct_entry = entity::liability_accounts::ActiveModel {
-        name: sea_orm::ActiveValue::Set(account.item.institution_name),
+        institution_name: sea_orm::ActiveValue::Set(instituion_name),
+        name: sea_orm::ActiveValue::Set(account.name.clone()),
         nonce: sea_orm::ActiveValue::Set(nonce),
         encrypted_token: sea_orm::ActiveValue::Set(ciphertext),
         ..Default::default()
@@ -108,21 +112,39 @@ pub async fn exchange_token(
 
     // Get encrypted token from daemon
     let (nonce, ciphertext) = daemon::encrypt_token(access_token.access_token.clone()).unwrap();
-    let plaid_acct =
+    let plaid_item =
         get_plaid_account(&client_id, &secret, &access_token.access_token, &client).await;
 
     // Save encrypted token to DB
-    let acct_entry = entity::asset_accounts::ActiveModel {
-        name: sea_orm::ActiveValue::Set(plaid_acct.item.institution_name),
-        nonce: sea_orm::ActiveValue::Set(nonce),
-        encrypted_token: sea_orm::ActiveValue::Set(ciphertext),
-        ..Default::default()
-    };
-    let db = db::get_db().await;
-    let res = acct_entry.insert(&db).await;
-    match res {
-        Ok(_) => logging::success("account linked successfully"),
-        Err(_) => logging::error("failed to save account"),
+    for account in plaid_item.accounts {
+        let res = match account.account_type {
+            plaid::types::AccountType::Loan | plaid::types::AccountType::Credit => {
+                save_liability_account(
+                    &account,
+                    plaid_item.item.institution_name.clone(),
+                    nonce.clone(),
+                    ciphertext.clone(),
+                )
+                .await
+            }
+            plaid::types::AccountType::Investment
+            | plaid::types::AccountType::Depository
+            | plaid::types::AccountType::Brokerage
+            | plaid::types::AccountType::Other => {
+                save_asset_account(
+                    &account,
+                    plaid_item.item.institution_name.clone(),
+                    nonce.clone(),
+                    ciphertext.clone(),
+                )
+                .await
+            }
+        };
+
+        match res {
+            Ok(_) => logging::success(&format!("saved account {}", account.name)),
+            Err(_) => logging::error("failed to save account"),
+        }
     }
 
     // Graceful server shutdown after response to client
