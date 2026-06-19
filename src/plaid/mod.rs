@@ -1,6 +1,9 @@
-use crate::cache;
+use crate::daemon;
+use crate::db;
+use crate::entity;
 use crate::logging;
 mod types;
+use sea_orm::EntityTrait;
 
 pub fn load_env() -> (String, String) {
     let client_id = std::env::var("PLAID_CLIENT_ID").unwrap_or_else(|_e| {
@@ -49,13 +52,36 @@ pub async fn get_plaid_account(
     };
 }
 
+async fn get_asset_account_tokens() -> Vec<String> {
+    // Get accounts from db
+    let db = db::get_db().await;
+    let accts: Vec<entity::asset_accounts::Model> = entity::asset_accounts::Entity::find()
+        .all(&db)
+        .await
+        .unwrap();
+
+    // Decrypt accounts using daemon
+    let mut tokens: Vec<String> = Vec::new();
+    for acct in accts {
+        let decrypted =
+            daemon::decrypt_token(acct.nonce, acct.encrypted_token).unwrap_or_else(|| {
+                logging::error("failed to connect to daemon. Are you logged in?");
+                std::process::exit(1);
+            });
+        tokens.push(decrypted)
+    }
+
+    return tokens;
+}
+
 pub async fn get_linked_items() -> Vec<types::PlaidItem> {
     let (client_id, secret) = load_env();
-    let token_cache = cache::read_token_file();
+    let tokens = get_asset_account_tokens().await;
+
     let client = reqwest::Client::new();
     let mut linked_items: Vec<types::PlaidItem> = vec![];
 
-    for token in token_cache.tokens {
+    for token in tokens {
         linked_items.push(get_plaid_account(&client_id, &secret, &token, &client).await)
     }
 
