@@ -6,16 +6,16 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
-    pub institution_name: String,
-    pub name: String,
     #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
-    pub nonce: String,
-    #[sea_orm(unique)]
-    pub encrypted_token: String,
+    pub name: String,
 
     #[sea_orm(has_one)]
     pub plan_liability_rules: HasOne<super::plan_liability_rules::Entity>,
+
+    #[sea_orm(belongs_to, from = "plaid_item_id", to = "id")]
+    pub plaid_item: HasOne<super::plaid_item::Entity>,
+    pub plaid_item_id: Option<i32>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
