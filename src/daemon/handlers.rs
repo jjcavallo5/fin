@@ -1,3 +1,4 @@
+use crate::daemon::encryption::{self, EncryptedBlob, NONCE_LEN, SALT_LEN};
 use crate::daemon::types;
 use crate::logging;
 
@@ -16,21 +17,68 @@ pub fn stop() -> types::DaemonResponse {
     return types::DaemonResponse::Quit;
 }
 
-pub fn encrypt(token: String, password: &String) -> types::DaemonResponse {
-    logging::info(format!("token: {}, pass: {}", token, password).as_str());
-    let mut encrypted_token = String::new();
-    encrypted_token.push_str(&token);
-    encrypted_token.push_str(&password);
-    return types::DaemonResponse::Data {
-        token: encrypted_token,
-    };
+fn derive_key(password: &String, db_salt: &[u8; SALT_LEN]) -> Result<[u8; 32], String> {
+    if password.is_empty() {
+        return Err("daemon is not logged in".to_string());
+    }
+
+    encryption::derive_key(password, db_salt)
+        .map_err(|_| "failed to derive encryption key".to_string())
 }
 
-pub fn decrypt(token: String, password: &String) -> types::DaemonResponse {
-    logging::info(format!("token: {}, pass: {}", token, password).as_str());
-    let mut decrypted_token = String::new();
-    decrypted_token.push_str(&token);
-    return types::DaemonResponse::Data {
-        token: decrypted_token.replace(password, ""),
+pub fn encrypt(
+    token: String,
+    password: &String,
+    db_salt: &[u8; SALT_LEN],
+) -> types::DaemonResponse {
+    let key = match derive_key(password, db_salt) {
+        Ok(key) => key,
+        Err(message) => return types::DaemonResponse::Error { message },
     };
+
+    match encryption::encrypt_token(&key, &token) {
+        Ok(blob) => types::DaemonResponse::Encrypted {
+            nonce: encryption::encode_hex(&blob.nonce),
+            ciphertext: encryption::encode_hex(&blob.ciphertext),
+        },
+        Err(message) => types::DaemonResponse::Error { message },
+    }
+}
+
+pub fn decrypt(
+    nonce: String,
+    ciphertext: String,
+    password: &String,
+    db_salt: &[u8; SALT_LEN],
+) -> types::DaemonResponse {
+    let key = match derive_key(password, db_salt) {
+        Ok(key) => key,
+        Err(message) => return types::DaemonResponse::Error { message },
+    };
+
+    let nonce_bytes = match encryption::decode_hex(&nonce) {
+        Ok(bytes) if bytes.len() == NONCE_LEN => bytes,
+        Ok(_) => {
+            return types::DaemonResponse::Error {
+                message: format!("nonce must be {} bytes", NONCE_LEN),
+            };
+        }
+        Err(message) => return types::DaemonResponse::Error { message },
+    };
+
+    let ciphertext_bytes = match encryption::decode_hex(&ciphertext) {
+        Ok(bytes) => bytes,
+        Err(message) => return types::DaemonResponse::Error { message },
+    };
+
+    let nonce_array: [u8; NONCE_LEN] = nonce_bytes.try_into().unwrap();
+    let blob = EncryptedBlob {
+        nonce: nonce_array,
+        ciphertext: ciphertext_bytes,
+    };
+
+    match encryption::decrypt_token(&key, &blob) {
+        Ok(token) => types::DaemonResponse::Data { token },
+        Err(message) => types::DaemonResponse::Error { message },
+    }
 }

@@ -65,3 +65,26 @@ pub fn decrypt_token(key_bytes: &[u8; KEY_LEN], blob: &EncryptedBlob) -> Result<
 
     String::from_utf8(plaintext).map_err(|_| "decrypted token was not valid UTF-8".to_string())
 }
+
+pub fn encode_hex(bytes: &[u8]) -> String {
+    let mut encoded = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        encoded.push_str(&format!("{:02x}", byte));
+    }
+    encoded
+}
+
+pub fn decode_hex(encoded: &str) -> Result<Vec<u8>, String> {
+    if encoded.len() % 2 != 0 {
+        return Err("hex string must contain an even number of characters".to_string());
+    }
+
+    let mut bytes = Vec::with_capacity(encoded.len() / 2);
+    for chunk_start in (0..encoded.len()).step_by(2) {
+        let byte = u8::from_str_radix(&encoded[chunk_start..chunk_start + 2], 16)
+            .map_err(|_| "invalid hex string".to_string())?;
+        bytes.push(byte);
+    }
+
+    Ok(bytes)
+}
