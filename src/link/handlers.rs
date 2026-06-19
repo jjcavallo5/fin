@@ -1,12 +1,13 @@
-use crate::cache;
 use crate::daemon;
 use crate::db;
 use crate::entity;
 use crate::link::types;
 use crate::logging;
 use crate::plaid;
+use crate::plaid::get_plaid_account;
 use axum::extract::State;
 use axum::Json;
+use sea_orm::ActiveModelTrait;
 
 pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
     println!("[GET TOKEN]: get token called");
@@ -53,8 +54,8 @@ pub async fn exchange_token(
     let (client_id, secret) = plaid::load_env();
 
     let request = types::TokenExchangeRequest {
-        client_id,
-        secret,
+        client_id: client_id.clone(),
+        secret: secret.clone(),
         public_token: payload.public_token,
     };
 
@@ -75,11 +76,24 @@ pub async fn exchange_token(
         std::process::exit(1);
     });
 
-    // Save token to encrypted file
-    let (nonce, ciphertext) = daemon::encrypt_token(access_token.access_token).unwrap();
-    let db = db::get_db().await;
+    // Get encrypted token from daemon
+    let (nonce, ciphertext) = daemon::encrypt_token(access_token.access_token.clone()).unwrap();
+    let plaid_acct =
+        get_plaid_account(&client_id, &secret, &access_token.access_token, &client).await;
 
-    logging::success("account linked successfully");
+    // Save encrypted token to DB
+    let acct_entry = entity::asset_accounts::ActiveModel {
+        name: sea_orm::ActiveValue::Set(plaid_acct.item.institution_name),
+        nonce: sea_orm::ActiveValue::Set(nonce),
+        encrypted_token: sea_orm::ActiveValue::Set(ciphertext),
+        ..Default::default()
+    };
+    let db = db::get_db().await;
+    let res = acct_entry.insert(&db).await;
+    match res {
+        Ok(_) => logging::success("account linked successfully"),
+        Err(_) => logging::error("failed to save account"),
+    }
 
     // Graceful server shutdown after response to client
     if let Some(tx) = state.shutdown_tx.lock().await.take() {
