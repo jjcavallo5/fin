@@ -5,9 +5,9 @@ use chacha20poly1305::{
 };
 use rand_core::{OsRng, RngCore};
 
-const SALT_LEN: usize = 32;
-const KEY_LEN: usize = 32;
-const NONCE_LEN: usize = 24;
+pub const SALT_LEN: usize = 32;
+pub const KEY_LEN: usize = 32;
+pub const NONCE_LEN: usize = 24;
 
 #[derive(Debug, Clone)]
 pub struct EncryptedBlob {
