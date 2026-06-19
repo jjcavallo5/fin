@@ -8,7 +8,8 @@ pub struct Model {
     pub id: i32,
     pub name: String,
     pub created_at: DateTime,
-    pub token: String,
+    pub nonce: String,
+    pub encrypted_token: String,
 
     #[sea_orm(has_one)]
     pub plan_liability_rules: HasOne<super::plan_liability_rules::Entity>,
