@@ -1,4 +1,5 @@
 use crate::cache;
+use crate::daemon;
 use crate::db;
 use crate::entity;
 use crate::link::types;
@@ -75,7 +76,7 @@ pub async fn exchange_token(
     });
 
     // Save token to encrypted file
-    cache::save_encrypt_token(access_token.access_token);
+    let (nonce, ciphertext) = daemon::encrypt_token(access_token.access_token).unwrap();
     let db = db::get_db().await;
 
     logging::success("account linked successfully");
