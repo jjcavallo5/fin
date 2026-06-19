@@ -9,7 +9,7 @@ fn create_db() -> std::path::PathBuf {
         std::process::exit(1)
     });
 
-    let db_path = fin_dir.join("plans.db");
+    let db_path = fin_dir.join("fin.db");
     let exists = std::fs::exists(&db_path).unwrap_or_else(|_| {
         logging::error("failed to create database");
         std::process::exit(1)
