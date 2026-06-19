@@ -1,4 +1,3 @@
-use crate::daemon;
 use crate::db;
 use crate::entity;
 use crate::logging;
@@ -8,7 +7,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use sea_orm::ModelTrait;
+use sea_orm::EntityTrait;
 use tokio::net::TcpListener;
 use tokio::sync::{oneshot, Mutex};
 mod handlers;
@@ -48,19 +47,20 @@ pub async fn link() {
 
 pub async fn unlink() {
     // Get linked items
-    let linked_items = plaid::get_linked_items().await;
+    let linked_items = plaid::get_linked_accounts().await;
     let names = linked_items
         .iter()
-        .map(|item| item.item.institution_name.clone())
+        .map(|item| item.plaid_item.item.institution_name.clone())
         .collect();
     let (_, idx) = tui::tui(names);
+    let selected_item = &linked_items[idx];
 
     // Remove selected item from plaid
     let (client_id, secret) = plaid::load_env();
     let request = types::RemoveAccountRequest {
         client_id,
         secret,
-        access_token: linked_items[idx].access_token.clone(),
+        access_token: selected_item.plaid_item.access_token.clone(),
     };
     let client = reqwest::Client::new();
     client
@@ -74,36 +74,22 @@ pub async fn unlink() {
         });
 
     // Remove selected item from DB
-    let (_, ciphertext) = daemon::encrypt_token(linked_items[idx].access_token.clone())
-        .unwrap_or_else(|| {
-            logging::error("Failed to connect. Are you logged in?");
-            std::process::exit(1);
-        });
     let db = db::get_db().await;
-    let item_to_remove = entity::asset_accounts::Entity::find_by_encrypted_token(ciphertext)
-        .one(&db)
+    match entity::asset_accounts::Entity::delete_by_id(selected_item.asset_account_id)
+        .exec(&db)
         .await
-        .unwrap_or_else(|_| {
-            logging::error("failed to fetch account from database");
-            std::process::exit(1);
-        })
-        .unwrap_or_else(|| {
-            logging::error("failed to fetch account from database");
-            std::process::exit(1);
-        });
-
-    match item_to_remove.delete(&db).await {
+    {
         Ok(_) => logging::success(&format!(
             "{} removed successfully.",
-            linked_items[idx].item.institution_name,
+            selected_item.plaid_item.item.institution_name,
         )),
         Err(_) => logging::error("failed to remove account"),
     };
 }
 
 pub async fn list() {
-    let linked_items = plaid::get_linked_items().await;
+    let linked_items = plaid::get_linked_accounts().await;
     linked_items
         .iter()
-        .for_each(|item| println!("{}", item.item.institution_name));
+        .for_each(|item| println!("{}", item.plaid_item.item.institution_name));
 }
