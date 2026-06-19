@@ -69,6 +69,7 @@ async fn save_asset_account(
     plaid_item_id: i32,
 ) -> Result<(), sea_orm::DbErr> {
     let acct_entry = entity::asset_accounts::ActiveModel {
+        account_id: sea_orm::ActiveValue::Set(account.account_id.clone()),
         name: sea_orm::ActiveValue::Set(account.name.clone()),
         plaid_item_id: sea_orm::ActiveValue::Set(Some(plaid_item_id)),
         ..Default::default()
@@ -82,6 +83,7 @@ async fn save_liability_account(
     plaid_item_id: i32,
 ) -> Result<(), sea_orm::DbErr> {
     let acct_entry = entity::liability_accounts::ActiveModel {
+        account_id: sea_orm::ActiveValue::Set(account.account_id.clone()),
         name: sea_orm::ActiveValue::Set(account.name.clone()),
         plaid_item_id: sea_orm::ActiveValue::Set(Some(plaid_item_id)),
         ..Default::default()

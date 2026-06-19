@@ -56,32 +56,17 @@ pub async fn get_linked_accounts() -> Vec<types::LinkedAccount> {
     let (client_id, secret) = load_env();
     let client = reqwest::Client::new();
     let db = db::get_db().await;
-    let accts: Vec<entity::asset_accounts::Model> = entity::asset_accounts::Entity::find()
-        .all(&db)
-        .await
-        .unwrap();
+    let items: Vec<entity::plaid_item::Model> =
+        entity::plaid_item::Entity::find().all(&db).await.unwrap();
 
     let mut linked_accounts: Vec<types::LinkedAccount> = vec![];
-    for acct in accts {
-        let plaid_item_id = acct.plaid_item_id.unwrap_or_else(|| {
-            logging::error("asset account is missing plaid item reference");
+    for item in items {
+        let token = daemon::decrypt_token(item.nonce, item.encrypted_token).unwrap_or_else(|| {
+            logging::error("failed to connect to daemon. Are you logged in?");
             std::process::exit(1);
         });
-        let plaid_item = entity::plaid_item::Entity::find_by_id(plaid_item_id)
-            .one(&db)
-            .await
-            .unwrap()
-            .unwrap_or_else(|| {
-                logging::error("asset account references missing plaid item");
-                std::process::exit(1);
-            });
-        let token = daemon::decrypt_token(plaid_item.nonce, plaid_item.encrypted_token)
-            .unwrap_or_else(|| {
-                logging::error("failed to connect to daemon. Are you logged in?");
-                std::process::exit(1);
-            });
         linked_accounts.push(types::LinkedAccount {
-            account_id: acct.id,
+            account_id: item.id,
             plaid_item: get_plaid_account(&client_id, &secret, &token, &client).await,
         })
     }

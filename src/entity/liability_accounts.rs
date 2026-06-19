@@ -5,7 +5,7 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "liability_accounts")]
 pub struct Model {
     #[sea_orm(primary_key)]
-    pub id: i32,
+    pub account_id: String,
     #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
     pub name: String,

@@ -4,12 +4,12 @@ use crate::logging;
 use crate::plaid;
 use crate::tui;
 use axum::{
-    Router,
     routing::{get, post},
+    Router,
 };
 use sea_orm::EntityTrait;
 use tokio::net::TcpListener;
-use tokio::sync::{Mutex, oneshot};
+use tokio::sync::{oneshot, Mutex};
 mod handlers;
 mod types;
 
@@ -75,7 +75,7 @@ pub async fn unlink() {
 
     // Remove selected item from DB
     let db = db::get_db().await;
-    match entity::asset_accounts::Entity::delete_by_id(selected_item.account_id)
+    match entity::plaid_item::Entity::delete_by_id(selected_item.account_id)
         .exec(&db)
         .await
     {
