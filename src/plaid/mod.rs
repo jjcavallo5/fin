@@ -63,10 +63,23 @@ pub async fn get_linked_accounts() -> Vec<types::LinkedAccount> {
 
     let mut linked_accounts: Vec<types::LinkedAccount> = vec![];
     for acct in accts {
-        let token = daemon::decrypt_token(acct.nonce, acct.encrypted_token).unwrap_or_else(|| {
-            logging::error("failed to connect to daemon. Are you logged in?");
+        let plaid_item_id = acct.plaid_item_id.unwrap_or_else(|| {
+            logging::error("asset account is missing plaid item reference");
             std::process::exit(1);
         });
+        let plaid_item = entity::plaid_item::Entity::find_by_id(plaid_item_id)
+            .one(&db)
+            .await
+            .unwrap()
+            .unwrap_or_else(|| {
+                logging::error("asset account references missing plaid item");
+                std::process::exit(1);
+            });
+        let token = daemon::decrypt_token(plaid_item.nonce, plaid_item.encrypted_token)
+            .unwrap_or_else(|| {
+                logging::error("failed to connect to daemon. Are you logged in?");
+                std::process::exit(1);
+            });
         linked_accounts.push(types::LinkedAccount {
             account_id: acct.id,
             plaid_item: get_plaid_account(&client_id, &secret, &token, &client).await,

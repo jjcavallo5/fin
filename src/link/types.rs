@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{Mutex, oneshot};
 
 #[derive(Serialize)]
 pub struct User {
