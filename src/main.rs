@@ -39,7 +39,9 @@ enum Commands {
     },
     Decrypt {
         #[arg()]
-        token: String,
+        nonce: String,
+        #[arg()]
+        ciphertext: String,
     },
 }
 
@@ -54,7 +56,7 @@ async fn main() {
 
     match &args.command {
         Commands::Balance => balance::balance().await,
-        Commands::Daemon => daemon::run_daemon(),
+        Commands::Daemon => daemon::run_daemon().await,
         Commands::Link => link::link().await,
         Commands::List => link::list().await,
         Commands::Login => daemon::login(),
@@ -66,12 +68,15 @@ async fn main() {
         Commands::Stop => daemon::quit(),
         Commands::Unlink => link::unlink().await,
         Commands::Encrypt { token } => {
-            let encrypted = daemon::encrypt_token(token.clone());
-            logging::info(format!("response: {}", encrypted).as_str());
+            if let Some((nonce, ciphertext)) = daemon::encrypt_token(token.clone()) {
+                logging::info(format!("nonce: {}", nonce).as_str());
+                logging::info(format!("ciphertext: {}", ciphertext).as_str());
+            }
         }
-        Commands::Decrypt { token } => {
-            let encrypted = daemon::decrypt_token(token.clone());
-            logging::info(format!("response: {}", encrypted).as_str());
+        Commands::Decrypt { nonce, ciphertext } => {
+            if let Some(decrypted) = daemon::decrypt_token(nonce.clone(), ciphertext.clone()) {
+                logging::info(format!("response: {}", decrypted).as_str());
+            }
         }
     }
 }
