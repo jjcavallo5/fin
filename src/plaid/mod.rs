@@ -52,7 +52,7 @@ pub async fn get_plaid_account(
     };
 }
 
-pub async fn get_linked_accounts() -> Vec<types::LinkedAssetAccount> {
+pub async fn get_linked_accounts() -> Vec<types::LinkedAccount> {
     let (client_id, secret) = load_env();
     let client = reqwest::Client::new();
     let db = db::get_db().await;
@@ -61,14 +61,14 @@ pub async fn get_linked_accounts() -> Vec<types::LinkedAssetAccount> {
         .await
         .unwrap();
 
-    let mut linked_accounts: Vec<types::LinkedAssetAccount> = vec![];
+    let mut linked_accounts: Vec<types::LinkedAccount> = vec![];
     for acct in accts {
         let token = daemon::decrypt_token(acct.nonce, acct.encrypted_token).unwrap_or_else(|| {
             logging::error("failed to connect to daemon. Are you logged in?");
             std::process::exit(1);
         });
-        linked_accounts.push(types::LinkedAssetAccount {
-            asset_account_id: acct.id,
+        linked_accounts.push(types::LinkedAccount {
+            account_id: acct.id,
             plaid_item: get_plaid_account(&client_id, &secret, &token, &client).await,
         })
     }

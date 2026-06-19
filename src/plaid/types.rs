@@ -14,9 +14,21 @@ pub struct Balance {
 }
 
 #[derive(Deserialize)]
+pub enum AccountType {
+    Investment,
+    Credit,
+    Depository,
+    Loan,
+    Brokerage,
+    Other,
+}
+
+#[derive(Deserialize)]
 pub struct Account {
     pub balances: Balance,
     pub name: String,
+    pub account_type: AccountType,
+    pub account_subtype: String,
 }
 
 #[derive(Deserialize)]
@@ -36,7 +48,7 @@ pub struct PlaidItem {
     pub access_token: String,
 }
 
-pub struct LinkedAssetAccount {
-    pub asset_account_id: i32,
+pub struct LinkedAccount {
+    pub account_id: i32,
     pub plaid_item: PlaidItem,
 }
