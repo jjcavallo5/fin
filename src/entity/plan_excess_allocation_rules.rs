@@ -18,6 +18,7 @@ pub enum AllocationType {
 pub struct Model {
     #[sea_orm(primary_key)]
     pub id: i32,
+    #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
     pub allocation_type: AllocationType,
 
