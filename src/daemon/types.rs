@@ -6,18 +6,14 @@ pub enum DaemonRequest {
     Stop,
     Login { pass: String },
     Encrypt { token: String },
-    Decrypt { token: String },
+    Decrypt { nonce: String, ciphertext: String },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum DaemonResponse {
     Ok,
     Quit,
     Data { token: String },
+    Encrypted { nonce: String, ciphertext: String },
     Error { message: String },
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct DaemonTokenResponse {
-    pub token: String,
 }
