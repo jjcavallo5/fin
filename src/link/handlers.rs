@@ -46,6 +46,36 @@ pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
     return axum::Json(plaid_auth_response);
 }
 
+async fn save_asset_account(
+    account: plaid::types::PlaidItem,
+    nonce: String,
+    ciphertext: String,
+) -> Result<(), sea_orm::DbErr> {
+    let acct_entry = entity::asset_accounts::ActiveModel {
+        name: sea_orm::ActiveValue::Set(account.item.institution_name),
+        nonce: sea_orm::ActiveValue::Set(nonce),
+        encrypted_token: sea_orm::ActiveValue::Set(ciphertext),
+        ..Default::default()
+    };
+    let db = db::get_db().await;
+    return acct_entry.insert(&db).await.map(|_| ());
+}
+
+async fn save_liability_account(
+    account: plaid::types::PlaidItem,
+    nonce: String,
+    ciphertext: String,
+) -> Result<(), sea_orm::DbErr> {
+    let acct_entry = entity::liability_accounts::ActiveModel {
+        name: sea_orm::ActiveValue::Set(account.item.institution_name),
+        nonce: sea_orm::ActiveValue::Set(nonce),
+        encrypted_token: sea_orm::ActiveValue::Set(ciphertext),
+        ..Default::default()
+    };
+    let db = db::get_db().await;
+    return acct_entry.insert(&db).await.map(|_| ());
+}
+
 pub async fn exchange_token(
     State(state): State<std::sync::Arc<types::LinkServerState>>,
     Json(payload): Json<types::PublicTokenRequest>,

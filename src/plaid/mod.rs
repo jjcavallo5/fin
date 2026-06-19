@@ -2,7 +2,7 @@ use crate::daemon;
 use crate::db;
 use crate::entity;
 use crate::logging;
-mod types;
+pub mod types;
 use sea_orm::EntityTrait;
 
 pub fn load_env() -> (String, String) {
