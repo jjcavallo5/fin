@@ -1,4 +1,6 @@
-use crate::cache;
+use crate::daemon;
+use crate::db;
+use crate::entity;
 use crate::logging;
 use crate::plaid;
 use crate::tui;
@@ -6,6 +8,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use sea_orm::ModelTrait;
 use tokio::net::TcpListener;
 use tokio::sync::{oneshot, Mutex};
 mod handlers;
@@ -44,6 +47,7 @@ pub async fn link() {
 }
 
 pub async fn unlink() {
+    // Get linked items
     let linked_items = plaid::get_linked_items().await;
     let names = linked_items
         .iter()
@@ -51,6 +55,7 @@ pub async fn unlink() {
         .collect();
     let (_, idx) = tui::tui(names);
 
+    // Remove selected item from plaid
     let (client_id, secret) = plaid::load_env();
     let request = types::RemoveAccountRequest {
         client_id,
@@ -68,11 +73,32 @@ pub async fn unlink() {
             std::process::exit(1)
         });
 
-    cache::remove_token(linked_items[idx].access_token.clone());
-    logging::success(&format!(
-        "{} removed successfully.",
-        linked_items[idx].item.institution_name,
-    ))
+    // Remove selected item from DB
+    let (_, ciphertext) = daemon::encrypt_token(linked_items[idx].access_token.clone())
+        .unwrap_or_else(|| {
+            logging::error("Failed to connect. Are you logged in?");
+            std::process::exit(1);
+        });
+    let db = db::get_db().await;
+    let item_to_remove = entity::asset_accounts::Entity::find_by_encrypted_token(ciphertext)
+        .one(&db)
+        .await
+        .unwrap_or_else(|_| {
+            logging::error("failed to fetch account from database");
+            std::process::exit(1);
+        })
+        .unwrap_or_else(|| {
+            logging::error("failed to fetch account from database");
+            std::process::exit(1);
+        });
+
+    match item_to_remove.delete(&db).await {
+        Ok(_) => logging::success(&format!(
+            "{} removed successfully.",
+            linked_items[idx].item.institution_name,
+        )),
+        Err(_) => logging::error("failed to remove account"),
+    };
 }
 
 pub async fn list() {

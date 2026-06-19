@@ -10,6 +10,7 @@ pub struct Model {
     #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
     pub nonce: String,
+    #[sea_orm(unique)]
     pub encrypted_token: String,
 
     #[sea_orm(has_one)]
