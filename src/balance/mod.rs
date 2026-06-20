@@ -10,10 +10,25 @@ pub async fn balance() {
         );
 
         for account in item.plaid_item.accounts {
-            println!(
-                "  {}: ${} (${})",
-                account.name, account.balances.current, account.balances.available
-            );
+            match account.account_type {
+                plaid::types::AccountType::Brokerage
+                | plaid::types::AccountType::Investment
+                | plaid::types::AccountType::Other
+                | plaid::types::AccountType::Depository => println!(
+                    "  {} ({}): ${} (${})",
+                    account.name,
+                    account.account_subtype,
+                    account.balances.current,
+                    account.balances.available
+                ),
+                plaid::types::AccountType::Credit | plaid::types::AccountType::Loan => println!(
+                    "  {} ({}): -${} (-${})",
+                    account.name,
+                    account.account_subtype,
+                    account.balances.current,
+                    account.balances.available
+                ),
+            }
         }
     }
     println!();
