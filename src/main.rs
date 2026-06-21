@@ -42,6 +42,8 @@ enum Commands {
         #[arg()]
         ciphertext: String,
     },
+    #[command(alias = "nw")]
+    NetWorth,
 }
 
 #[derive(Subcommand, Debug)]
@@ -77,5 +79,6 @@ async fn main() {
                 logging::info(format!("response: {}", decrypted).as_str());
             }
         }
+        Commands::NetWorth => logging::info("Net Worth"),
     }
 }
