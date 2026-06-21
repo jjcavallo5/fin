@@ -53,14 +53,14 @@ pub async fn net_worth() {
                 | plaid::types::AccountType::Other
                 | plaid::types::AccountType::Depository => {
                     println!(
-                        "  {} ({}): + ${}",
+                        "  {} ({}): \x1b[32;1m+${}\x1b[0m",
                         account.name, account.account_subtype, account.balances.current,
                     );
                     net_worth = net_worth + account.balances.current;
                 }
                 plaid::types::AccountType::Credit | plaid::types::AccountType::Loan => {
                     println!(
-                        "  {} ({}): - ${}",
+                        "  {} ({}): \x1b[31;1m-${}\x1b[0m",
                         account.name, account.account_subtype, account.balances.current,
                     );
                     net_worth = net_worth - account.balances.current;
