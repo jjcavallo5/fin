@@ -75,7 +75,7 @@ pub async fn unlink() {
 
     // Remove selected item from DB
     let db = db::get_db().await;
-    match entity::asset_accounts::Entity::delete_by_id(selected_item.asset_account_id)
+    match entity::plaid_item::Entity::delete_by_id(selected_item.account_id)
         .exec(&db)
         .await
     {

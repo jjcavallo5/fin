@@ -14,9 +14,27 @@ pub struct Balance {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum AccountType {
+    Investment,
+    Credit,
+    Depository,
+    Loan,
+    Brokerage,
+    Other,
+}
+
+#[derive(Deserialize)]
 pub struct Account {
+    pub account_id: String,
     pub balances: Balance,
     pub name: String,
+
+    #[serde(rename = "type")]
+    pub account_type: AccountType,
+
+    #[serde(rename = "subtype")]
+    pub account_subtype: String,
 }
 
 #[derive(Deserialize)]
@@ -36,7 +54,7 @@ pub struct PlaidItem {
     pub access_token: String,
 }
 
-pub struct LinkedAssetAccount {
-    pub asset_account_id: i32,
+pub struct LinkedAccount {
+    pub account_id: i32,
     pub plaid_item: PlaidItem,
 }

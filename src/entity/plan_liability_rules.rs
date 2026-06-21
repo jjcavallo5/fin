@@ -31,13 +31,13 @@ pub struct Model {
     pub plan: HasOne<super::plans::Entity>,
     pub plan_id: Option<i32>,
 
-    #[sea_orm(belongs_to, from = "liability_account_id", to = "id")]
+    #[sea_orm(belongs_to, from = "liability_account_id", to = "account_id")]
     pub liability_account: HasOne<super::liability_accounts::Entity>,
-    pub liability_account_id: Option<i32>,
+    pub liability_account_id: Option<String>,
 
-    #[sea_orm(belongs_to, from = "payment_asset_account_id", to = "id")]
+    #[sea_orm(belongs_to, from = "payment_asset_account_id", to = "account_id")]
     pub payment_asset_account: HasOne<super::asset_accounts::Entity>,
-    pub payment_asset_account_id: Option<i32>,
+    pub payment_asset_account_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

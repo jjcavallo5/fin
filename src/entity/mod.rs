@@ -2,6 +2,7 @@ pub mod asset_accounts;
 pub mod asset_balance_rules;
 pub mod encryption;
 pub mod liability_accounts;
+pub mod plaid_item;
 pub mod plan_excess_allocation_rules;
 pub mod plan_liability_rules;
 pub mod plans;

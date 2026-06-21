@@ -31,9 +31,9 @@ pub struct Model {
     pub plan: HasOne<super::plans::Entity>,
     pub plan_id: Option<i32>,
 
-    #[sea_orm(belongs_to, from = "asset_account_id", to = "id")]
+    #[sea_orm(belongs_to, from = "asset_account_id", to = "account_id")]
     pub asset_account: HasOne<super::asset_accounts::Entity>,
-    pub asset_account_id: Option<i32>,
+    pub asset_account_id: Option<String>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

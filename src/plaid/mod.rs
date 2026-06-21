@@ -2,7 +2,7 @@ use crate::daemon;
 use crate::db;
 use crate::entity;
 use crate::logging;
-mod types;
+pub mod types;
 use sea_orm::EntityTrait;
 
 pub fn load_env() -> (String, String) {
@@ -52,23 +52,21 @@ pub async fn get_plaid_account(
     };
 }
 
-pub async fn get_linked_accounts() -> Vec<types::LinkedAssetAccount> {
+pub async fn get_linked_accounts() -> Vec<types::LinkedAccount> {
     let (client_id, secret) = load_env();
     let client = reqwest::Client::new();
     let db = db::get_db().await;
-    let accts: Vec<entity::asset_accounts::Model> = entity::asset_accounts::Entity::find()
-        .all(&db)
-        .await
-        .unwrap();
+    let items: Vec<entity::plaid_item::Model> =
+        entity::plaid_item::Entity::find().all(&db).await.unwrap();
 
-    let mut linked_accounts: Vec<types::LinkedAssetAccount> = vec![];
-    for acct in accts {
-        let token = daemon::decrypt_token(acct.nonce, acct.encrypted_token).unwrap_or_else(|| {
+    let mut linked_accounts: Vec<types::LinkedAccount> = vec![];
+    for item in items {
+        let token = daemon::decrypt_token(item.nonce, item.encrypted_token).unwrap_or_else(|| {
             logging::error("failed to connect to daemon. Are you logged in?");
             std::process::exit(1);
         });
-        linked_accounts.push(types::LinkedAssetAccount {
-            asset_account_id: acct.id,
+        linked_accounts.push(types::LinkedAccount {
+            account_id: item.id,
             plaid_item: get_plaid_account(&client_id, &secret, &token, &client).await,
         })
     }

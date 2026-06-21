@@ -1,5 +1,5 @@
 use std::{
-    io::{self, stdout, Read, Write},
+    io::{self, Read, Write, stdout},
     process::Command,
 };
 
