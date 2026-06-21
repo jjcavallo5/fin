@@ -1,4 +1,3 @@
-use crate::logging;
 use crate::plaid;
 
 pub async fn balance() {
@@ -69,5 +68,5 @@ pub async fn net_worth() {
         }
     }
 
-    logging::success(&format!("Net Worth: ${}", net_worth))
+    println!("\n\x1B[1mNet Worth: ${}\x1B[0m\n", net_worth);
 }
