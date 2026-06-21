@@ -32,16 +32,9 @@ enum Commands {
     Quit,
     Stop,
     Unlink,
-    Encrypt {
-        #[arg()]
-        token: String,
-    },
-    Decrypt {
-        #[arg()]
-        nonce: String,
-        #[arg()]
-        ciphertext: String,
-    },
+
+    #[command(alias = "nw")]
+    NetWorth,
 }
 
 #[derive(Subcommand, Debug)]
@@ -66,16 +59,6 @@ async fn main() {
         Commands::Quit => daemon::quit(),
         Commands::Stop => daemon::quit(),
         Commands::Unlink => link::unlink().await,
-        Commands::Encrypt { token } => {
-            if let Some((nonce, ciphertext)) = daemon::encrypt_token(token.clone()) {
-                logging::info(format!("nonce: {}", nonce).as_str());
-                logging::info(format!("ciphertext: {}", ciphertext).as_str());
-            }
-        }
-        Commands::Decrypt { nonce, ciphertext } => {
-            if let Some(decrypted) = daemon::decrypt_token(nonce.clone(), ciphertext.clone()) {
-                logging::info(format!("response: {}", decrypted).as_str());
-            }
-        }
+        Commands::NetWorth => balance::net_worth().await,
     }
 }

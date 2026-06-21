@@ -123,7 +123,7 @@ pub fn ping() {
     stream.shutdown(std::net::Shutdown::Write).unwrap();
 
     match read_response(&mut stream) {
-        types::DaemonResponse::Ok => logging::success("connection to daemon successful"),
+        types::DaemonResponse::Ok => (),
         types::DaemonResponse::Error { message } => logging::error(&message),
         _ => logging::error("unexpected daemon response"),
     }
