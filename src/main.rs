@@ -59,6 +59,6 @@ async fn main() {
         Commands::Quit => daemon::quit(),
         Commands::Stop => daemon::quit(),
         Commands::Unlink => link::unlink().await,
-        Commands::NetWorth => logging::info("Net Worth"),
+        Commands::NetWorth => balance::net_worth().await,
     }
 }
