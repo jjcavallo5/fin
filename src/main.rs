@@ -6,6 +6,7 @@ mod db;
 mod entity;
 mod link;
 mod logging;
+mod migration;
 mod plaid;
 mod plan;
 mod tui;

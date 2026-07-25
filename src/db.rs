@@ -1,5 +1,5 @@
 use crate::daemon::encryption::{self, SALT_LEN};
-use crate::{entity, logging};
+use crate::{entity, logging, migration};
 use sea_orm::{ActiveModelTrait, Database, DatabaseConnection, EntityTrait, Set};
 
 fn create_db() -> std::path::PathBuf {
@@ -62,10 +62,10 @@ pub async fn get_db() -> DatabaseConnection {
     let db = Database::connect(format!("sqlite://{}", db_path.display()))
         .await
         .unwrap();
-    db.get_schema_registry("fin::entity::*")
-        .sync(&db)
-        .await
-        .unwrap();
+    migration::migrate(&db).await.unwrap_or_else(|error| {
+        logging::error(&format!("failed to initialize database: {error}"));
+        std::process::exit(1)
+    });
     get_db_salt(&db).await;
     return db;
 }
