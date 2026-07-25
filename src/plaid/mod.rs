@@ -1,73 +1,57 @@
 use crate::daemon;
 use crate::db;
 use crate::entity;
-use crate::logging;
+use crate::environment;
 pub mod types;
 use sea_orm::EntityTrait;
 
-pub fn load_env() -> (String, String) {
-    let client_id = std::env::var("PLAID_CLIENT_ID").unwrap_or_else(|_e| {
-        logging::error("PLAID_CLIENT_ID environment variable not set");
-        std::process::exit(1);
-    });
-    let secret = std::env::var("PLAID_SECRET").unwrap_or_else(|_e| {
-        logging::error("PLAID_SECRET environment variable not set");
-        std::process::exit(1);
-    });
-
-    return (client_id, secret);
-}
-
 pub async fn get_plaid_account(
-    client_id: &String,
-    secret: &String,
-    token: &String,
-    client: &reqwest::Client,
-) -> types::PlaidItem {
+    client_id: &str,
+    secret: &str,
+    token: &str,
+) -> Result<types::PlaidItem, String> {
     let request = types::GetAccountRequest {
-        client_id: client_id.clone(),
-        secret: secret.clone(),
-        access_token: token.clone(),
+        client_id: client_id.to_string(),
+        secret: secret.to_string(),
+        access_token: token.to_string(),
     };
-    let resp = client
-        .post("https://sandbox.plaid.com/accounts/get")
+    let resp = reqwest::Client::new()
+        .post(environment::plaid_endpoint("accounts/get"))
         .header("Content-Type", "application/json")
         .json(&request)
         .send()
         .await
-        .unwrap_or_else(|_| {
-            logging::error("failed to create link token");
-            std::process::exit(1);
-        });
+        .map_err(|e| format!("failed to get Plaid accounts: {e}"))?;
 
-    let body: types::GetAccountResponse = resp.json().await.unwrap_or_else(|_| {
-        logging::error("Balance response was malformed");
-        std::process::exit(1);
-    });
+    if !resp.status().is_success() {
+        return Err(format!("Plaid accounts request failed: {}", resp.status()));
+    }
 
-    return types::PlaidItem {
-        access_token: token.clone(),
-        accounts: body.accounts,
-        item: body.item,
-    };
+    let body: types::GetAccountResponse = resp
+        .json()
+        .await
+        .map_err(|e| format!("Plaid accounts response was malformed: {e}"))?;
+
+    Ok(body.into_plaid_item())
 }
 
 pub async fn get_linked_accounts() -> Vec<types::LinkedAccount> {
-    let (client_id, secret) = load_env();
-    let client = reqwest::Client::new();
     let db = db::get_db().await;
     let items: Vec<entity::plaid_item::Model> =
         entity::plaid_item::Entity::find().all(&db).await.unwrap();
 
     let mut linked_accounts: Vec<types::LinkedAccount> = vec![];
     for item in items {
-        let token = daemon::decrypt_token(item.nonce, item.encrypted_token).unwrap_or_else(|| {
-            logging::error("failed to connect to daemon. Are you logged in?");
-            std::process::exit(1);
-        });
+        let plaid_item =
+            daemon::get_plaid_account(item.nonce.clone(), item.encrypted_token.clone())
+                .unwrap_or_else(|| {
+                    std::process::exit(1);
+                });
         linked_accounts.push(types::LinkedAccount {
             account_id: item.id,
-            plaid_item: get_plaid_account(&client_id, &secret, &token, &client).await,
+            plaid_item,
+            nonce: item.nonce,
+            encrypted_token: item.encrypted_token,
         })
     }
 

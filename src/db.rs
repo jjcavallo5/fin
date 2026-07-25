@@ -1,15 +1,23 @@
 use crate::daemon::encryption::{self, SALT_LEN};
-use crate::{entity, logging};
+use crate::{entity, environment, logging, migration};
 use sea_orm::{ActiveModelTrait, Database, DatabaseConnection, EntityTrait, Set};
 
+fn database_path(home_dir: &std::path::Path) -> std::path::PathBuf {
+    home_dir.join(".fin").join(environment::DATABASE_FILENAME)
+}
+
 fn create_db() -> std::path::PathBuf {
-    let fin_dir = dirs::home_dir().unwrap().join(".fin");
+    let home_dir = dirs::home_dir().unwrap_or_else(|| {
+        logging::error("failed to locate home directory");
+        std::process::exit(1)
+    });
+    let db_path = database_path(&home_dir);
+    let fin_dir = db_path.parent().unwrap();
     std::fs::create_dir_all(&fin_dir).unwrap_or_else(|_| {
         logging::error("failed to create .fin directory");
         std::process::exit(1)
     });
 
-    let db_path = fin_dir.join("fin.db");
     let exists = std::fs::exists(&db_path).unwrap_or_else(|_| {
         logging::error("failed to create database");
         std::process::exit(1)
@@ -62,10 +70,29 @@ pub async fn get_db() -> DatabaseConnection {
     let db = Database::connect(format!("sqlite://{}", db_path.display()))
         .await
         .unwrap();
-    db.get_schema_registry("fin::entity::*")
-        .sync(&db)
+    migration::migrate(&db, &db_path)
         .await
-        .unwrap();
+        .unwrap_or_else(|error| {
+            logging::error(&format!("failed to initialize database: {error}"));
+            std::process::exit(1)
+        });
     get_db_salt(&db).await;
     return db;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::database_path;
+    use crate::environment;
+    use std::path::Path;
+
+    #[test]
+    fn builds_database_path_for_active_environment() {
+        assert_eq!(
+            database_path(Path::new("/test-home")),
+            Path::new("/test-home")
+                .join(".fin")
+                .join(environment::DATABASE_FILENAME)
+        );
+    }
 }

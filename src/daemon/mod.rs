@@ -3,90 +3,118 @@ mod handlers;
 mod types;
 use crate::{db, logging};
 use std::io::{Read, Write};
+use std::os::unix::fs::PermissionsExt;
 
-const SOCKET_PTH: &str = "/tmp/fin.sock";
+fn socket_path() -> std::path::PathBuf {
+    dirs::home_dir().unwrap().join(".fin").join("fin.sock")
+}
 
-fn handle_request(
+async fn handle_request(
     buffer: Vec<u8>,
-    password: &mut String,
+    session: &mut handlers::Session,
     db_salt: &[u8; encryption::SALT_LEN],
 ) -> types::DaemonResponse {
     let decoded_req: types::DaemonRequest = serde_json::from_slice(&buffer).unwrap();
 
     let should_exit = match decoded_req {
         types::DaemonRequest::Ping => handlers::ping(),
-        types::DaemonRequest::Login { pass } => handlers::login(pass, password),
+        types::DaemonRequest::Login {
+            pass,
+            plaid_client_id,
+            plaid_secret,
+        } => handlers::login(pass, plaid_client_id, plaid_secret, session, db_salt),
         types::DaemonRequest::Stop => handlers::stop(),
-        types::DaemonRequest::Encrypt { token } => handlers::encrypt(token, password, db_salt),
-        types::DaemonRequest::Decrypt { nonce, ciphertext } => {
-            handlers::decrypt(nonce, ciphertext, password, db_salt)
+        types::DaemonRequest::CreateLinkToken => handlers::create_link_token(session).await,
+        types::DaemonRequest::ExchangePublicToken { public_token } => {
+            handlers::exchange_public_token(public_token, session).await
+        }
+        types::DaemonRequest::GetPlaidAccount { nonce, ciphertext } => {
+            handlers::get_plaid_account(nonce, ciphertext, session).await
+        }
+        types::DaemonRequest::RemovePlaidItem { nonce, ciphertext } => {
+            handlers::remove_plaid_item(nonce, ciphertext, session).await
         }
     };
 
-    return should_exit;
+    should_exit
 }
 
 pub async fn run_daemon() {
     let db = db::get_db().await;
     let db_salt = db::get_db_salt(&db).await;
 
-    std::fs::remove_file(SOCKET_PTH).ok();
-    let listener = match std::os::unix::net::UnixListener::bind(SOCKET_PTH) {
+    let path = socket_path();
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::remove_file(&path).ok();
+    let listener = match tokio::net::UnixListener::bind(&path) {
         Ok(proc) => proc,
         Err(_) => {
             logging::error("failed to start unix listener");
             std::process::exit(1)
         }
     };
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600)).unwrap();
 
-    let mut password = String::new();
+    let mut session = handlers::Session::new();
 
-    loop {
-        match listener.accept() {
-            Ok((mut socket, _)) => {
-                let mut buffer: Vec<u8> = Vec::new();
-                socket.read_to_end(&mut buffer).unwrap();
-                match handle_request(buffer, &mut password, &db_salt) {
-                    types::DaemonResponse::Quit => break,
-                    response => {
-                        let bytes = serde_json::to_vec(&response).unwrap();
-                        socket.write_all(&bytes).unwrap_or_else(|_| {
-                            logging::error("failed to return daemon response");
-                            std::process::exit(1);
-                        });
-                    }
-                }
+    while let Ok((mut socket, _)) = listener.accept().await {
+        let mut buffer: Vec<u8> = Vec::new();
+        tokio::io::AsyncReadExt::read_to_end(&mut socket, &mut buffer)
+            .await
+            .unwrap();
+        match handle_request(buffer, &mut session, &db_salt).await {
+            types::DaemonResponse::Quit => break,
+            response => {
+                let bytes = serde_json::to_vec(&response).unwrap();
+                tokio::io::AsyncWriteExt::write_all(&mut socket, &bytes)
+                    .await
+                    .unwrap_or_else(|_| {
+                        logging::error("failed to return daemon response");
+                        std::process::exit(1);
+                    });
             }
-            Err(_) => break,
         }
     }
 
+    std::fs::remove_file(path).ok();
     logging::info("exiting daemon...")
 }
 
 fn connect() -> std::os::unix::net::UnixStream {
-    return match std::os::unix::net::UnixStream::connect(SOCKET_PTH) {
+    match std::os::unix::net::UnixStream::connect(socket_path()) {
         Ok(str) => str,
         Err(_) => {
             logging::error("connection failed");
             std::process::exit(1);
         }
-    };
+    }
 }
 
 pub fn login() {
     // Get password
     spawn_daemon();
-    println!("Enter password: ");
-    let mut buffer = String::new();
+    println!("Enter encryption password: ");
+    let mut password = String::new();
     std::io::stdin()
-        .read_line(&mut buffer)
+        .read_line(&mut password)
         .expect("Incorrect password");
+    println!("Enter Plaid client ID: ");
+    let mut plaid_client_id = String::new();
+    std::io::stdin()
+        .read_line(&mut plaid_client_id)
+        .expect("Failed to read Plaid client ID");
+    println!("Enter Plaid secret: ");
+    let mut plaid_secret = String::new();
+    std::io::stdin()
+        .read_line(&mut plaid_secret)
+        .expect("Failed to read Plaid secret");
 
     // Send login request with password
     let mut stream = connect();
     let req = types::DaemonRequest::Login {
-        pass: buffer.trim().to_string(),
+        pass: password.trim().to_string(),
+        plaid_client_id: plaid_client_id.trim().to_string(),
+        plaid_secret: plaid_secret.trim().to_string(),
     };
     let bytes = serde_json::to_vec(&req).unwrap();
     stream.write_all(&bytes).unwrap_or_else(|_| {
@@ -172,9 +200,9 @@ fn read_response(stream: &mut std::os::unix::net::UnixStream) -> types::DaemonRe
     })
 }
 
-pub fn encrypt_token(token: String) -> Option<(String, String)> {
-    match send_request(types::DaemonRequest::Encrypt { token }) {
-        types::DaemonResponse::Encrypted { nonce, ciphertext } => Some((nonce, ciphertext)),
+pub fn create_link_token() -> Option<String> {
+    match send_request(types::DaemonRequest::CreateLinkToken) {
+        types::DaemonResponse::LinkToken { token } => Some(token),
         types::DaemonResponse::Error { message } => {
             logging::error(&message);
             None
@@ -186,9 +214,15 @@ pub fn encrypt_token(token: String) -> Option<(String, String)> {
     }
 }
 
-pub fn decrypt_token(nonce: String, ciphertext: String) -> Option<String> {
-    match send_request(types::DaemonRequest::Decrypt { nonce, ciphertext }) {
-        types::DaemonResponse::Data { token } => Some(token),
+pub fn exchange_public_token(
+    public_token: String,
+) -> Option<(String, String, crate::plaid::types::PlaidItem)> {
+    match send_request(types::DaemonRequest::ExchangePublicToken { public_token }) {
+        types::DaemonResponse::ExchangedToken {
+            nonce,
+            ciphertext,
+            item,
+        } => Some((nonce, ciphertext, item)),
         types::DaemonResponse::Error { message } => {
             logging::error(&message);
             None
@@ -196,6 +230,37 @@ pub fn decrypt_token(nonce: String, ciphertext: String) -> Option<String> {
         _ => {
             logging::error("unexpected daemon response");
             None
+        }
+    }
+}
+
+pub fn get_plaid_account(
+    nonce: String,
+    ciphertext: String,
+) -> Option<crate::plaid::types::PlaidItem> {
+    match send_request(types::DaemonRequest::GetPlaidAccount { nonce, ciphertext }) {
+        types::DaemonResponse::PlaidAccount { item } => Some(item),
+        types::DaemonResponse::Error { message } => {
+            logging::error(&message);
+            None
+        }
+        _ => {
+            logging::error("unexpected daemon response");
+            None
+        }
+    }
+}
+
+pub fn remove_plaid_item(nonce: String, ciphertext: String) -> bool {
+    match send_request(types::DaemonRequest::RemovePlaidItem { nonce, ciphertext }) {
+        types::DaemonResponse::Ok => true,
+        types::DaemonResponse::Error { message } => {
+            logging::error(&message);
+            false
+        }
+        _ => {
+            logging::error("unexpected daemon response");
+            false
         }
     }
 }

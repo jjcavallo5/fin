@@ -4,8 +4,11 @@ mod balance;
 mod daemon;
 mod db;
 mod entity;
+mod environment;
 mod link;
 mod logging;
+mod migration;
+mod money;
 mod plaid;
 mod plan;
 mod tui;
@@ -40,6 +43,7 @@ enum Commands {
 #[derive(Subcommand, Debug)]
 enum PlanSubcommands {
     Create,
+    Execute { plan_id: i32 },
 }
 
 #[tokio::main]
@@ -55,6 +59,7 @@ async fn main() {
         Commands::Ping => daemon::ping(),
         Commands::Plan { command } => match command {
             PlanSubcommands::Create => plan::create().await,
+            PlanSubcommands::Execute { plan_id } => plan::execute(*plan_id).await,
         },
         Commands::Quit => daemon::quit(),
         Commands::Stop => daemon::quit(),

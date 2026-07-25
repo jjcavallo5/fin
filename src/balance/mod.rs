@@ -1,4 +1,4 @@
-use crate::plaid;
+use crate::{money, plaid};
 
 pub async fn balance() {
     let linked_items = plaid::get_linked_accounts().await;
@@ -15,18 +15,26 @@ pub async fn balance() {
                 | plaid::types::AccountType::Investment
                 | plaid::types::AccountType::Other
                 | plaid::types::AccountType::Depository => println!(
-                    "  {} ({}): ${} (${})",
+                    "  {} ({}): {} ({})",
                     account.name,
                     account.account_subtype,
-                    account.balances.current,
-                    account.balances.available
+                    money::format_cents(account.balances.current_cents),
+                    account
+                        .balances
+                        .available_cents
+                        .map(money::format_cents)
+                        .unwrap_or_else(|| "unavailable".to_string())
                 ),
                 plaid::types::AccountType::Credit | plaid::types::AccountType::Loan => println!(
-                    "  {} ({}): -${} (-${})",
+                    "  {} ({}): -{} (-{})",
                     account.name,
                     account.account_subtype,
-                    account.balances.current,
-                    account.balances.available
+                    money::format_cents(account.balances.current_cents),
+                    account
+                        .balances
+                        .available_cents
+                        .map(money::format_cents)
+                        .unwrap_or_else(|| "unavailable".to_string())
                 ),
             }
         }
@@ -37,7 +45,7 @@ pub async fn balance() {
 pub async fn net_worth() {
     let linked_items = plaid::get_linked_accounts().await;
 
-    let mut net_worth = 0.0;
+    let mut net_worth = 0_i64;
 
     for item in linked_items {
         println!(
@@ -52,21 +60,28 @@ pub async fn net_worth() {
                 | plaid::types::AccountType::Other
                 | plaid::types::AccountType::Depository => {
                     println!(
-                        "  {} ({}): \x1b[32;1m+${}\x1b[0m",
-                        account.name, account.account_subtype, account.balances.current,
+                        "  {} ({}): \x1b[32;1m+{}\x1b[0m",
+                        account.name,
+                        account.account_subtype,
+                        money::format_cents(account.balances.current_cents),
                     );
-                    net_worth = net_worth + account.balances.current;
+                    net_worth += account.balances.current_cents;
                 }
                 plaid::types::AccountType::Credit | plaid::types::AccountType::Loan => {
                     println!(
-                        "  {} ({}): \x1b[31;1m-${}\x1b[0m",
-                        account.name, account.account_subtype, account.balances.current,
+                        "  {} ({}): \x1b[31;1m-{}\x1b[0m",
+                        account.name,
+                        account.account_subtype,
+                        money::format_cents(account.balances.current_cents),
                     );
-                    net_worth = net_worth - account.balances.current;
+                    net_worth -= account.balances.current_cents;
                 }
             }
         }
     }
 
-    println!("\n\x1B[1mNet Worth: ${}\x1B[0m\n", net_worth);
+    println!(
+        "\n\x1B[1mNet Worth: {}\x1B[0m\n",
+        money::format_cents(net_worth)
+    );
 }
