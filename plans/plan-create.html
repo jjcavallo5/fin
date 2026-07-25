@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FIN — Plan Create Implementation Plan</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f4ee;
+      --panel: #fffdf8;
+      --text: #252721;
+      --muted: #686b61;
+      --border: #d8d5ca;
+      --accent: #245d4b;
+      --accent-soft: #dcebe4;
+      --warn: #8a4b16;
+      --warn-soft: #f7e7d5;
+      --code: #eceae3;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #171915;
+        --panel: #20231e;
+        --text: #ecede8;
+        --muted: #b3b8ae;
+        --border: #3b4037;
+        --accent: #8bc8ad;
+        --accent-soft: #263f35;
+        --warn: #efb378;
+        --warn-soft: #482f1d;
+        --code: #2b2e28;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.6 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main { max-width: 1040px; margin: 0 auto; padding: 56px 24px 96px; }
+    header { border-bottom: 1px solid var(--border); margin-bottom: 40px; padding-bottom: 28px; }
+    h1, h2, h3 { line-height: 1.2; }
+    h1 { font-size: clamp(2.2rem, 6vw, 4.5rem); letter-spacing: -.045em; margin: 0 0 12px; }
+    h2 { font-size: 1.75rem; margin: 48px 0 18px; }
+    h3 { font-size: 1.08rem; margin: 28px 0 8px; }
+    p { max-width: 76ch; }
+    a { color: var(--accent); }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    code { background: var(--code); border-radius: 4px; padding: .12em .32em; }
+    pre { background: var(--code); border: 1px solid var(--border); border-radius: 10px; overflow: auto; padding: 18px; }
+    pre code { padding: 0; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border-bottom: 1px solid var(--border); padding: 12px 10px; text-align: left; vertical-align: top; }
+    th { color: var(--muted); font-size: .8rem; letter-spacing: .06em; text-transform: uppercase; }
+    .lede { color: var(--muted); font-size: 1.2rem; max-width: 70ch; }
+    .principle, .decision, .warning {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      margin: 22px 0;
+      padding: 18px 20px;
+    }
+    .principle, .decision { background: var(--accent-soft); }
+    .warning { background: var(--warn-soft); }
+    .label { color: var(--muted); display: block; font-size: .74rem; font-weight: 700; letter-spacing: .08em; margin-bottom: 6px; text-transform: uppercase; }
+    .grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+    .card h3 { margin-top: 0; }
+    .muted { color: var(--muted); }
+    .checklist li { margin: 8px 0; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+    nav a { font-size: .9rem; }
+    @media (max-width: 680px) { main { padding: 32px 18px 64px; } table { display: block; overflow-x: auto; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <span class="label">Implementation plan</span>
+    <h1>Plan create &amp; execution</h1>
+    <p class="lede">A design for capturing reusable financial policy, solving it against point-in-time balances, and producing a durable chronological checklist through <code>plan execute &lt;plan-id&gt;</code>.</p>
+    <nav aria-label="Document sections">
+      <a href="#decisions">Core decisions</a>
+      <a href="#gaps">Model gaps</a>
+      <a href="#model">Proposed model</a>
+      <a href="#create">Create workflow</a>
+      <a href="#solver">Solver</a>
+      <a href="#execute">Execute workflow</a>
+      <a href="#delivery">Delivery phases</a>
+    </nav>
+  </header>
+
+  <section id="decisions">
+    <h2>1. Core decisions</h2>
+    <div class="principle">
+      <span class="label">Primary design principle</span>
+      <strong>A plan is reusable policy. A plan run is an immutable point-in-time solution.</strong>
+      <p>The plan stores user intent and reusable rules. A run stores the balance snapshot, generated steps, expected final balances, and diagnostics. Editing a plan or refreshing Plaid balances must not rewrite a previously generated run.</p>
+    </div>
+    <div class="grid">
+      <article class="card"><h3>Money</h3><p>Convert provider amounts into signed <code>i64</code> cents at the integration boundary. Do not perform financial calculations with <code>f32</code>.</p></article>
+      <article class="card"><h3>Determinism</h3><p>Give rules explicit stages and positions so identical policy plus identical balances produces identical steps.</p></article>
+      <article class="card"><h3>Atomicity</h3><p>Validate and save a complete plan in one database transaction. Generate and save a run in a separate transaction.</p></article>
+      <article class="card"><h3>Explainability</h3><p>Every generated step references its source rule and includes the reason it exists.</p></article>
+    </div>
+  </section>
+
+  <section id="gaps">
+    <h2>2. Current model gaps</h2>
+    <table>
+      <thead><tr><th>Gap</th><th>Failure mode</th><th>Required change</th></tr></thead>
+      <tbody>
+        <tr><td>Nullable discriminator fields</td><td>A target rule can lack a target, a fixed rule can contain both values, and allocation types can contain incompatible values.</td><td>Domain validation plus database checks where SQLite/SeaORM supports them.</td></tr>
+        <tr><td>Optional foreign keys</td><td>Rules can be persisted without a plan or without the account needed to execute them.</td><td>Make persisted rule ownership and account references non-null.</td></tr>
+        <tr><td>Account relations use <code>HasOne</code></td><td>An account cannot correctly relate to rules in multiple plans.</td><td>Change account-side rule relations to <code>HasMany</code>; add scoped uniqueness constraints.</td></tr>
+        <tr><td>Minimum balance semantics</td><td>It is unclear whether an underfunded account is protected, replenished, or treated as a target.</td><td>Initially define minimum as protected money. Later generalize to minimum, exact target, and maximum constraints.</td></tr>
+        <tr><td>No rule ordering</td><td>Several valid solutions may exist and generated instructions can vary between runs.</td><td>Add a deterministic <code>position</code> within a defined stage order.</td></tr>
+        <tr><td>No hard/soft distinction</td><td>The system cannot distinguish a forbidden partial solution from a useful best-effort solution.</td><td>Add <code>Required</code> and <code>BestEffort</code> requirement semantics.</td></tr>
+        <tr><td>Funding eligibility is implicit</td><td>The solver may treat investments, current balances, or unavailable funds as spendable cash.</td><td>Store/derive an explicit effective spendable balance and constrain eligible funding accounts.</td></tr>
+        <tr><td>No transfer abstraction</td><td>Asset-to-asset reserve funding and leftover allocation cannot be represented consistently.</td><td>Generate generic source-to-destination actions.</td></tr>
+        <tr><td>No execution snapshot</td><td>Re-running against new balances changes the proposed instructions and destroys reproducibility.</td><td>Add plan runs, captured balances, generated steps, and final projected balances.</td></tr>
+        <tr><td>No timing contract</td><td><code>FixedPayment</code> is ambiguous for a recurring plan.</td><td>For MVP, define one run as one execution against balances captured now; add cadence/due dates later.</td></tr>
+        <tr><td>Runtime schema synchronization</td><td>Schema evolution becomes risky once constraints and historical executions matter.</td><td>Introduce explicit, versioned migrations before shipping execution history.</td></tr>
+      </tbody>
+    </table>
+
+    <div class="warning">
+      <span class="label">Validation boundary</span>
+      <p>A plan can be structurally valid but infeasible today. Creation rejects malformed or contradictory policy. Execution reports insufficient current funds, ambiguity, or provider-data problems without corrupting the saved policy.</p>
+    </div>
+  </section>
+
+  <section id="model">
+    <h2>3. Proposed domain and persistence model</h2>
+    <pre><code>Plan (reusable policy)
+ ├── Asset balance constraints
+ ├── Liability payment rules
+ └── Excess allocation rules
+
+PlanRun (immutable solution)
+ ├── Captured account balances
+ ├── Ordered generated steps
+ ├── Projected final balances
+ └── Diagnostics</code></pre>
+
+    <h3>Plans and policy rules</h3>
+    <ul>
+      <li>Add <code>updated_at</code> and optionally <code>status: Draft | Active | Archived</code> to plans.</li>
+      <li>Add <code>position</code> and <code>requirement: Required | BestEffort</code> to applicable rules.</li>
+      <li>Make <code>plan_id</code>, destination account IDs, and required payment source IDs non-null.</li>
+      <li>Use <code>i64</code> for every cents and basis-points value.</li>
+      <li>Add unique indexes for one balance rule per plan/account and one liability rule per plan/account unless multiple rules are intentionally supported.</li>
+      <li>Enforce at most one remainder allocation per plan.</li>
+    </ul>
+
+    <h3><code>plan_runs</code></h3>
+    <pre><code>id: i64
+plan_id: i32
+status: feasible | partial | infeasible | completed | cancelled
+plan_version_or_hash: string
+created_at: datetime
+total_available_cents: i64
+unallocated_cents: i64
+diagnostic_message: optional string</code></pre>
+
+    <h3><code>plan_run_balances</code></h3>
+    <pre><code>id: i64
+plan_run_id: i64
+account_id: string
+account_kind: asset | liability
+current_balance_cents: i64
+available_balance_cents: optional i64
+effective_balance_cents: i64
+captured_at: datetime</code></pre>
+
+    <h3><code>plan_run_steps</code></h3>
+    <pre><code>id: i64
+plan_run_id: i64
+sequence: i32
+action_type: transfer | payment | retain | manual_action
+source_account_id: optional string
+destination_account_id: optional string
+amount_cents: i64
+rule_source_type: string
+rule_source_id: i64
+status: pending | completed | skipped
+instructions: string</code></pre>
+
+    <h3><code>plan_run_final_balances</code> (recommended)</h3>
+    <p>Persist projected final balances instead of recomputing them for display. They also provide a compact audit target when the user marks steps complete.</p>
+  </section>
+
+  <section id="create">
+    <h2>4. <code>plan create</code> workflow</h2>
+    <p>Use an interactive wizard backed by a transport-independent input structure. The wizard gathers data; a plan service validates and persists it.</p>
+    <pre><code>struct CreatePlanInput {
+    name: String,
+    plan_type: PlanType,
+    asset_rules: Vec&lt;AssetRuleInput&gt;,
+    liability_rules: Vec&lt;LiabilityRuleInput&gt;,
+    allocation_rules: Vec&lt;AllocationRuleInput&gt;,
+}</code></pre>
+
+    <ol>
+      <li>Load linked accounts and normalize account capabilities.</li>
+      <li>Ask for the plan name and type.</li>
+      <li>Select eligible funding accounts.</li>
+      <li>Collect protected minimum balances for asset accounts.</li>
+      <li>Collect liability target/fixed-payment rules and payment sources.</li>
+      <li>Collect fixed, percentage, and remainder excess allocations.</li>
+      <li>Display a normalized summary including implied stage order.</li>
+      <li>Validate the complete input.</li>
+      <li>On confirmation, save the plan and all rules in one transaction.</li>
+    </ol>
+
+    <h3>Creation-time validations</h3>
+    <ul class="checklist">
+      <li>Referenced accounts exist and have compatible account kinds.</li>
+      <li>Exactly the fields required by each rule discriminator are populated.</li>
+      <li>Money values are nonnegative and percentages are between 0 and 10,000 basis points.</li>
+      <li>Percentage allocations total no more than 100%.</li>
+      <li>At most one remainder rule exists.</li>
+      <li>Every required liability rule has a funding source.</li>
+      <li>Duplicate plan/account rules are rejected unless explicitly supported.</li>
+      <li>Unallocated remainder is either retained deliberately or assigned to a destination.</li>
+    </ul>
+  </section>
+
+  <section id="solver">
+    <h2>5. Solver semantics</h2>
+    <p>The MVP does not require a general optimization package. It requires deterministic simulation using integer cents and explicit priorities.</p>
+
+    <div class="decision">
+      <span class="label">Stage order</span>
+      <strong>Protect reserves → required fixed payments → liability targets → fixed excess allocations → percentage allocations → remainder.</strong>
+    </div>
+
+    <ol>
+      <li>Load the captured balances into an in-memory account-state map.</li>
+      <li>Calculate spendable funds after protecting each asset minimum.</li>
+      <li>Apply required fixed payments in position order.</li>
+      <li>Apply target-balance liability payments in position order, capped at the current liability balance.</li>
+      <li>Apply best-effort rules if funds remain.</li>
+      <li>Capture the excess-allocation base.</li>
+      <li>Apply fixed allocations.</li>
+      <li>Calculate all percentages from the same captured allocation base, not a shrinking balance.</li>
+      <li>Apply the single remainder rule or explicitly retain the remainder.</li>
+      <li>Convert state transitions into chronological steps and projected final balances.</li>
+    </ol>
+
+    <h3>Post-solve invariants</h3>
+    <p>Replay the generated steps against the snapshot before saving and assert that:</p>
+    <ul>
+      <li>No source account falls below a required minimum.</li>
+      <li>No payment exceeds the remaining liability balance.</li>
+      <li>Every required target is satisfied for a feasible run.</li>
+      <li>Total outgoing value never exceeds total eligible value.</li>
+      <li>The replayed balances exactly equal the reported projected final balances.</li>
+      <li>Step sequences are unique, contiguous, and deterministic.</li>
+    </ul>
+  </section>
+
+  <section id="execute">
+    <h2>6. <code>plan execute &lt;plan-id&gt;</code> workflow</h2>
+    <ol>
+      <li>Load and validate the active plan policy.</li>
+      <li>Fetch live account data and convert all monetary values to cents.</li>
+      <li>Capture the balance snapshot and the policy version/hash.</li>
+      <li>Run the deterministic solver.</li>
+      <li>Replay and verify the solution.</li>
+      <li>Atomically save the run, snapshots, steps, diagnostics, and projected balances.</li>
+      <li>Print the saved steps—not a separately recomputed representation.</li>
+    </ol>
+
+    <pre><code>Run 42 for “Monthly reset”
+Balances captured: 2026-07-25 09:31 MDT
+
+1. Pay $450.00 from Checking to Visa
+   Satisfies fixed-payment rule “Visa minimum”
+
+2. Pay $1,120.32 from Checking to Auto Loan
+   Reduces balance to target of $8,000.00
+
+3. Transfer $300.00 from Checking to Brokerage
+   Allocates 50% of remaining $600.00
+
+4. Transfer $300.00 from Checking to Savings
+   Allocates remainder
+
+Expected final balances:
+  Checking       $2,000.00
+  Savings        $5,300.00
+  Visa             $825.14
+  Auto Loan      $8,000.00</code></pre>
+
+    <p>If a required rule cannot be satisfied, persist an infeasible run with diagnostics but no misleading executable checklist. A later command may support an explicit best-effort mode.</p>
+  </section>
+
+  <section id="delivery">
+    <h2>7. Delivery phases</h2>
+    <div class="grid">
+      <article class="card">
+        <span class="label">Phase 1</span>
+        <h3>Formalize the domain</h3>
+        <p>Document rule meanings, hard/soft behavior, funding eligibility, stage order, percentage base, and insufficient-funds behavior. Add pure Rust input and validation types.</p>
+      </article>
+      <article class="card">
+        <span class="label">Phase 2</span>
+        <h3>Harden persistence</h3>
+        <p>Add versioned migrations, correct relation cardinality, non-null foreign keys, integer widths, unique indexes, positions, and rule constraints.</p>
+      </article>
+      <article class="card">
+        <span class="label">Phase 3</span>
+        <h3>Build plan creation</h3>
+        <p>Implement the interactive wizard, summary/confirmation screen, service-level validation, and transactional save.</p>
+      </article>
+      <article class="card">
+        <span class="label">Phase 4</span>
+        <h3>Implement the pure solver</h3>
+        <p>Accept policy plus snapshots and return either a verified solution or structured diagnostics. Cover it heavily with table-driven tests.</p>
+      </article>
+      <article class="card">
+        <span class="label">Phase 5</span>
+        <h3>Persist and display runs</h3>
+        <p>Add run entities, snapshot capture, atomic persistence, chronological rendering, and a command to inspect historical runs.</p>
+      </article>
+      <article class="card">
+        <span class="label">Phase 6</span>
+        <h3>Completion tracking</h3>
+        <p>Allow steps to be marked completed/skipped and reconcile actual balances. Defer automatic money movement until the manual workflow is trustworthy.</p>
+      </article>
+    </div>
+
+    <h3>Minimum test matrix</h3>
+    <ul>
+      <li>Exact funds, excess funds, and insufficient funds.</li>
+      <li>Multiple funding accounts with protected minimums.</li>
+      <li>Fixed payment greater than the remaining liability.</li>
+      <li>Already-satisfied target balance.</li>
+      <li>Fixed plus percentage plus remainder allocations, including rounding cents.</li>
+      <li>Invalid percentages, duplicate remainders, missing accounts, and incompatible account types.</li>
+      <li>Deterministic results regardless of database query order.</li>
+      <li>Historical run output remains unchanged after policy edits and balance refreshes.</li>
+    </ul>
+
+    <h3>MVP completion criteria</h3>
+    <ul class="checklist">
+      <li><code>plan create</code> produces no partially saved plans.</li>
+      <li>Invalid rule combinations cannot enter active persisted policy.</li>
+      <li><code>plan execute &lt;id&gt;</code> creates a reproducible run from a timestamped balance snapshot.</li>
+      <li>Every feasible run has verified, ordered steps and projected final balances.</li>
+      <li>Every infeasible run explains which hard rules failed and by how much.</li>
+      <li>All calculations use integer cents and deterministic rounding.</li>
+    </ul>
+  </section>
+
+  <footer>
+    <p class="muted">This plan intentionally separates manual execution guidance from future automated transfers. The stored step model can support automation later without coupling the initial solver to provider-specific transfer APIs.</p>
+  </footer>
+</main>
+</body>
+</html>
