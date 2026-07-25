@@ -1,8 +1,9 @@
 mod domain;
+mod solver;
 
 use crate::{db, entity, logging, money};
 use domain::{AllocationRuleInput, AssetBalanceRuleInput, CreatePlanInput, LiabilityRuleInput};
-use sea_orm::{ActiveModelTrait, EntityTrait, Set, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, TransactionTrait};
 use std::io::{self, Write};
 
 pub async fn create() {
@@ -45,6 +46,121 @@ pub async fn create() {
         Ok(plan) => logging::success(&format!("saved plan {} with id {}", plan.name, plan.id)),
         Err(error) => logging::error(&format!("failed to save plan: {error}")),
     }
+}
+
+pub async fn execute(plan_id: i32) {
+    let db = db::get_db().await;
+    let Some(plan) = entity::plans::Entity::find_by_id(plan_id)
+        .one(&db)
+        .await
+        .unwrap_or(None)
+    else {
+        logging::error(&format!("plan {plan_id} does not exist"));
+        return;
+    };
+    let balance_rules = entity::asset_balance_rules::Entity::find()
+        .filter(entity::asset_balance_rules::Column::PlanId.eq(plan_id))
+        .all(&db)
+        .await
+        .unwrap_or_default();
+    let liability_rules = entity::plan_liability_rules::Entity::find()
+        .filter(entity::plan_liability_rules::Column::PlanId.eq(plan_id))
+        .all(&db)
+        .await
+        .unwrap_or_default();
+    let allocation_rules = entity::plan_excess_allocation_rules::Entity::find()
+        .filter(entity::plan_excess_allocation_rules::Column::PlanId.eq(plan_id))
+        .all(&db)
+        .await
+        .unwrap_or_default();
+
+    let mut balances = solver::AccountBalances::default();
+    for item in crate::plaid::get_linked_accounts().await {
+        for account in item.plaid_item.accounts {
+            match account.account_type {
+                crate::plaid::types::AccountType::Credit
+                | crate::plaid::types::AccountType::Loan => {
+                    balances
+                        .liabilities
+                        .insert(account.account_id, account.balances.current_cents);
+                }
+                _ => {
+                    balances
+                        .assets
+                        .insert(account.account_id, account.balances.current_cents);
+                }
+            }
+        }
+    }
+
+    match solver::solve(
+        &balance_rules,
+        &liability_rules,
+        &allocation_rules,
+        &balances,
+    ) {
+        solver::SolveResult::Infeasible { failures } => {
+            logging::error(&format!("plan {} cannot be executed", plan.name));
+            for failure in failures {
+                println!("  - {}", failure.message);
+            }
+        }
+        solver::SolveResult::Executable {
+            steps,
+            projected_balances,
+        } => {
+            println!("\nPlan: {}\n", plan.name);
+            if steps.is_empty() {
+                println!("No actions are needed.");
+            }
+            for step in steps {
+                let verb = match step.kind {
+                    solver::PlanStepKind::LiabilityPayment => "Pay",
+                    solver::PlanStepKind::AssetTransfer => "Transfer",
+                };
+                println!(
+                    "{}. {verb} {} from {} to {}",
+                    step.sequence,
+                    money::format_cents(step.amount_cents),
+                    account_name(&step.source_account_id, &db).await,
+                    account_name(&step.destination_account_id, &db).await
+                );
+                println!("   {}", step.reason);
+            }
+            println!("\nExpected final balances:");
+            let mut assets: Vec<_> = projected_balances.assets.into_iter().collect();
+            assets.sort_by(|a, b| a.0.cmp(&b.0));
+            for (id, value) in assets {
+                println!(
+                    "  {:24} {}",
+                    account_name(&id, &db).await,
+                    money::format_cents(value)
+                );
+            }
+            let mut liabilities: Vec<_> = projected_balances.liabilities.into_iter().collect();
+            liabilities.sort_by(|a, b| a.0.cmp(&b.0));
+            for (id, value) in liabilities {
+                println!(
+                    "  {:24} {} owed",
+                    account_name(&id, &db).await,
+                    money::format_cents(value)
+                );
+            }
+        }
+    }
+}
+
+async fn account_name(id: &str, db: &sea_orm::DatabaseConnection) -> String {
+    if let Ok(Some(account)) = entity::asset_accounts::Entity::find_by_id(id).one(db).await {
+        return account.name;
+    }
+    if let Ok(Some(account)) = entity::liability_accounts::Entity::find_by_id(id)
+        .one(db)
+        .await
+    {
+        return account.name;
+    }
+    id.to_string()
 }
 
 async fn save(
@@ -132,13 +248,11 @@ fn collect_input(
     }
 
     let mut liability_rules = Vec::new();
-    for (position, liability) in liabilities
-        .iter()
-        .filter(|account| {
-            prompt_yes_no(&format!("Add a rule for {}?", account.name), false).unwrap_or(false)
-        })
-        .enumerate()
-    {
+    let mut liability_position = 0;
+    for liability in liabilities {
+        if !prompt_yes_no(&format!("Add a rule for {}?", liability.name), false)? {
+            continue;
+        }
         let kind = prompt_choice("Rule type", &["target balance", "fixed payment"])?;
         let value = money::parse_dollars_to_cents(&prompt("Amount")?)?;
         let source = select_account("Payment source", &depository)?;
@@ -150,7 +264,7 @@ fn collect_input(
         let common = (
             liability.name.clone(),
             requirement,
-            position as i32,
+            liability_position,
             liability.account_id.clone(),
             source.account_id.clone(),
         );
@@ -173,6 +287,7 @@ fn collect_input(
                 payment_asset_account_id: common.4,
             }
         });
+        liability_position += 1;
     }
 
     let mut allocation_rules = Vec::new();
