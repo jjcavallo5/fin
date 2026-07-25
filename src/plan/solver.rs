@@ -53,12 +53,8 @@ pub fn solve(
         .map(|rule| (rule.asset_account_id.as_str(), rule.minimum_balance_cents))
         .collect();
     let mut projected = balances.clone();
-    let mut failures = missing_balance_failures(
-        balance_rules,
-        liability_rules,
-        allocation_rules,
-        balances,
-    );
+    let mut failures =
+        missing_balance_failures(balance_rules, liability_rules, allocation_rules, balances);
     if !failures.is_empty() {
         return SolveResult::Infeasible { failures };
     }
@@ -211,7 +207,10 @@ fn missing_balance_failures(
         if !balances.assets.contains_key(&rule.payment_asset_account_id) {
             missing.insert(format!("asset {}", rule.payment_asset_account_id));
         }
-        if !balances.liabilities.contains_key(&rule.liability_account_id) {
+        if !balances
+            .liabilities
+            .contains_key(&rule.liability_account_id)
+        {
             missing.insert(format!("liability {}", rule.liability_account_id));
         }
     }

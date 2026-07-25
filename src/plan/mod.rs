@@ -395,5 +395,5 @@ fn select_account<'a>(
 }
 
 fn parse_percentage_bps(value: &str) -> Result<i64, String> {
-    money::parse_dollars_to_cents(value).map(|hundredths_of_percent| hundredths_of_percent)
+    money::parse_dollars_to_cents(value)
 }
