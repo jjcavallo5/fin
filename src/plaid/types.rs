@@ -8,7 +8,7 @@ pub struct GetAccountRequest {
     pub access_token: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Balance {
     #[serde(
         rename = "available",
@@ -20,7 +20,7 @@ pub struct Balance {
     pub current_cents: i64,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum AccountType {
     Investment,
@@ -49,7 +49,7 @@ fn optional_dollars_to_cents<'de, D: Deserializer<'de>>(
         .transpose()
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Account {
     pub account_id: String,
     pub balances: Balance,
@@ -62,7 +62,7 @@ pub struct Account {
     pub account_subtype: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Item {
     pub institution_name: String,
 }
@@ -73,15 +73,17 @@ pub struct GetAccountResponse {
     pub item: Item,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct PlaidItem {
     pub accounts: Vec<Account>,
     pub item: Item,
-    pub access_token: String,
 }
 
 pub struct LinkedAccount {
     pub account_id: i32,
     pub plaid_item: PlaidItem,
+    pub nonce: String,
+    pub encrypted_token: String,
 }
 
 #[cfg(test)]

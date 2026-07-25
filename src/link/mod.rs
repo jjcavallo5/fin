@@ -1,6 +1,6 @@
+use crate::daemon;
 use crate::db;
 use crate::entity;
-use crate::environment;
 use crate::logging;
 use crate::plaid;
 use crate::tui;
@@ -12,7 +12,7 @@ use sea_orm::EntityTrait;
 use tokio::net::TcpListener;
 use tokio::sync::{Mutex, oneshot};
 mod handlers;
-mod types;
+pub(crate) mod types;
 
 pub async fn link() {
     // Set up app state to recieve shutdown signal on success
@@ -57,22 +57,12 @@ pub async fn unlink() {
     let selected_item = &linked_items[idx];
 
     // Remove selected item from plaid
-    let (client_id, secret) = plaid::load_env();
-    let request = types::RemoveAccountRequest {
-        client_id,
-        secret,
-        access_token: selected_item.plaid_item.access_token.clone(),
-    };
-    let client = reqwest::Client::new();
-    client
-        .post(environment::plaid_endpoint("item/remove"))
-        .json(&request)
-        .send()
-        .await
-        .unwrap_or_else(|_| {
-            logging::error("failed to remove token");
-            std::process::exit(1)
-        });
+    if !daemon::remove_plaid_item(
+        selected_item.nonce.clone(),
+        selected_item.encrypted_token.clone(),
+    ) {
+        return;
+    }
 
     // Remove selected item from DB
     let db = db::get_db().await;
