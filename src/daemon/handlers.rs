@@ -120,7 +120,7 @@ pub async fn create_link_token(session: &Session) -> types::DaemonResponse {
         "link/token/create",
         json!({
             "client_id": client_id, "secret": secret, "client_name": "FIN",
-            "country_codes": ["US"], "language": "en", "products": ["auth"],
+            "country_codes": ["US"], "language": "en", "products": ["transactions"],
             "user": { "client_user_id": "Jeremy" }
         }),
     )

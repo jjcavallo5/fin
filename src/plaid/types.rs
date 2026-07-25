@@ -10,14 +10,16 @@ pub struct GetAccountRequest {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Balance {
-    #[serde(
-        rename = "available",
-        default,
-        deserialize_with = "optional_dollars_to_cents"
-    )]
     pub available_cents: Option<i64>,
-    #[serde(rename = "current", deserialize_with = "dollars_to_cents")]
     pub current_cents: i64,
+}
+
+#[derive(Deserialize)]
+struct PlaidBalance {
+    #[serde(default, deserialize_with = "optional_dollars_to_cents")]
+    available: Option<i64>,
+    #[serde(deserialize_with = "dollars_to_cents")]
+    current: i64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -69,8 +71,41 @@ pub struct Item {
 
 #[derive(Deserialize)]
 pub struct GetAccountResponse {
-    pub accounts: Vec<Account>,
+    accounts: Vec<PlaidAccount>,
     pub item: Item,
+}
+
+#[derive(Deserialize)]
+struct PlaidAccount {
+    account_id: String,
+    balances: PlaidBalance,
+    name: String,
+    #[serde(rename = "type")]
+    account_type: AccountType,
+    #[serde(rename = "subtype")]
+    account_subtype: String,
+}
+
+impl GetAccountResponse {
+    pub fn into_plaid_item(self) -> PlaidItem {
+        PlaidItem {
+            accounts: self
+                .accounts
+                .into_iter()
+                .map(|account| Account {
+                    account_id: account.account_id,
+                    balances: Balance {
+                        available_cents: account.balances.available,
+                        current_cents: account.balances.current,
+                    },
+                    name: account.name,
+                    account_type: account.account_type,
+                    account_subtype: account.account_subtype,
+                })
+                .collect(),
+            item: self.item,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -88,7 +123,7 @@ pub struct LinkedAccount {
 
 #[cfg(test)]
 mod tests {
-    use super::GetAccountResponse;
+    use super::{GetAccountResponse, PlaidItem};
 
     #[test]
     fn deserializes_balances_as_exact_cents() {
@@ -106,8 +141,9 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(response.accounts[0].balances.available_cents, Some(1011));
-        assert_eq!(response.accounts[0].balances.current_cents, 123_456);
+        let item = response.into_plaid_item();
+        assert_eq!(item.accounts[0].balances.available_cents, Some(1011));
+        assert_eq!(item.accounts[0].balances.current_cents, 123_456);
     }
 
     #[test]
@@ -126,7 +162,32 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(response.accounts[0].balances.available_cents, None);
-        assert_eq!(response.accounts[0].balances.current_cents, 4_201);
+        let item = response.into_plaid_item();
+        assert_eq!(item.accounts[0].balances.available_cents, None);
+        assert_eq!(item.accounts[0].balances.current_cents, 4_201);
+    }
+
+    #[test]
+    fn daemon_round_trip_does_not_reconvert_cents() {
+        let response: GetAccountResponse = serde_json::from_str(
+            r#"{
+                "accounts": [{
+                    "account_id": "checking",
+                    "balances": {"available": 1000.25, "current": 1234.56},
+                    "name": "Checking",
+                    "type": "depository",
+                    "subtype": "checking"
+                }],
+                "item": {"institution_name": "Bank"}
+            }"#,
+        )
+        .unwrap();
+        let item = response.into_plaid_item();
+
+        let encoded = serde_json::to_vec(&item).unwrap();
+        let decoded: PlaidItem = serde_json::from_slice(&encoded).unwrap();
+
+        assert_eq!(decoded.accounts[0].balances.available_cents, Some(100_025));
+        assert_eq!(decoded.accounts[0].balances.current_cents, 123_456);
     }
 }

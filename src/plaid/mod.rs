@@ -32,10 +32,7 @@ pub async fn get_plaid_account(
         .await
         .map_err(|e| format!("Plaid accounts response was malformed: {e}"))?;
 
-    Ok(types::PlaidItem {
-        accounts: body.accounts,
-        item: body.item,
-    })
+    Ok(body.into_plaid_item())
 }
 
 pub async fn get_linked_accounts() -> Vec<types::LinkedAccount> {
