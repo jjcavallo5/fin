@@ -9,17 +9,17 @@ pub struct Model {
     #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
     pub name: String,
+    pub account_type: super::types::AssetAccountType,
+    pub account_subtype: String,
 
-    #[sea_orm(has_one)]
-    pub liability_rule: HasOne<super::plan_liability_rules::Entity>,
-    #[sea_orm(has_one)]
-    pub plan_asset_allocation_rule: HasOne<super::plan_excess_allocation_rules::Entity>,
-    #[sea_orm(has_one)]
-    pub asset_balance_rules: HasOne<super::asset_balance_rules::Entity>,
+    #[sea_orm(has_many)]
+    pub liability_payment_rules: HasMany<super::plan_liability_rules::Entity>,
+    #[sea_orm(has_many)]
+    pub balance_rules: HasMany<super::asset_balance_rules::Entity>,
 
     #[sea_orm(belongs_to, from = "plaid_item_id", to = "id")]
     pub plaid_item: HasOne<super::plaid_item::Entity>,
-    pub plaid_item_id: Option<i32>,
+    pub plaid_item_id: i32,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

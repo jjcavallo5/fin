@@ -8,15 +8,15 @@ pub struct Model {
     pub id: i32,
     #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
-    pub minimum_balance_cents: i32,
+    pub minimum_balance_cents: i64,
 
     #[sea_orm(belongs_to, from = "plan_id", to = "id")]
     pub plan: HasOne<super::plans::Entity>,
-    pub plan_id: Option<i32>,
+    pub plan_id: i32,
 
     #[sea_orm(belongs_to, from = "asset_account_id", to = "account_id")]
     pub asset_account: HasOne<super::asset_accounts::Entity>,
-    pub asset_account_id: Option<String>,
+    pub asset_account_id: String,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

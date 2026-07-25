@@ -5,8 +5,8 @@ use crate::link::types;
 use crate::logging;
 use crate::plaid;
 use crate::plaid::get_plaid_account;
-use axum::extract::State;
 use axum::Json;
+use axum::extract::State;
 use sea_orm::ActiveModelTrait;
 
 pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
@@ -71,7 +71,15 @@ async fn save_asset_account(
     let acct_entry = entity::asset_accounts::ActiveModel {
         account_id: sea_orm::ActiveValue::Set(account.account_id.clone()),
         name: sea_orm::ActiveValue::Set(account.name.clone()),
-        plaid_item_id: sea_orm::ActiveValue::Set(Some(plaid_item_id)),
+        account_type: sea_orm::ActiveValue::Set(match account.account_type {
+            plaid::types::AccountType::Depository => entity::types::AssetAccountType::Depository,
+            plaid::types::AccountType::Investment => entity::types::AssetAccountType::Investment,
+            plaid::types::AccountType::Brokerage => entity::types::AssetAccountType::Brokerage,
+            plaid::types::AccountType::Other => entity::types::AssetAccountType::Other,
+            _ => unreachable!("liability account passed to save_asset_account"),
+        }),
+        account_subtype: sea_orm::ActiveValue::Set(account.account_subtype.clone()),
+        plaid_item_id: sea_orm::ActiveValue::Set(plaid_item_id),
         ..Default::default()
     };
     let db = db::get_db().await;
@@ -85,7 +93,13 @@ async fn save_liability_account(
     let acct_entry = entity::liability_accounts::ActiveModel {
         account_id: sea_orm::ActiveValue::Set(account.account_id.clone()),
         name: sea_orm::ActiveValue::Set(account.name.clone()),
-        plaid_item_id: sea_orm::ActiveValue::Set(Some(plaid_item_id)),
+        account_type: sea_orm::ActiveValue::Set(match account.account_type {
+            plaid::types::AccountType::Credit => entity::types::LiabilityAccountType::Credit,
+            plaid::types::AccountType::Loan => entity::types::LiabilityAccountType::Loan,
+            _ => unreachable!("asset account passed to save_liability_account"),
+        }),
+        account_subtype: sea_orm::ActiveValue::Set(account.account_subtype.clone()),
+        plaid_item_id: sea_orm::ActiveValue::Set(plaid_item_id),
         ..Default::default()
     };
     let db = db::get_db().await;

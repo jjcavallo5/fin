@@ -4,12 +4,12 @@ use crate::logging;
 use crate::plaid;
 use crate::tui;
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 use sea_orm::EntityTrait;
 use tokio::net::TcpListener;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{Mutex, oneshot};
 mod handlers;
 mod types;
 

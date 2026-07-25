@@ -6,7 +6,7 @@ use sea_orm::entity::prelude::*;
     db_type = "String(StringLen::None)",
     rename_all = "snake_case"
 )]
-pub enum RuleType {
+pub enum LiabilityRuleType {
     TargetBalance,
     FixedPayment,
 }
@@ -20,24 +20,22 @@ pub struct Model {
     pub name: String,
     #[sea_orm(default_expr = "Expr::current_timestamp()")]
     pub created_at: DateTime,
-    pub rule_type: RuleType,
-
-    #[sea_orm(nullable)]
-    pub target_balance_cents: Option<i32>,
-    #[sea_orm(nullable)]
-    pub fixed_payment_cents: Option<i32>,
+    pub rule_type: LiabilityRuleType,
+    pub value_cents: i64,
+    pub requirement: super::types::RuleRequirement,
+    pub position: i32,
 
     #[sea_orm(belongs_to, from = "plan_id", to = "id")]
     pub plan: HasOne<super::plans::Entity>,
-    pub plan_id: Option<i32>,
+    pub plan_id: i32,
 
     #[sea_orm(belongs_to, from = "liability_account_id", to = "account_id")]
     pub liability_account: HasOne<super::liability_accounts::Entity>,
-    pub liability_account_id: Option<String>,
+    pub liability_account_id: String,
 
     #[sea_orm(belongs_to, from = "payment_asset_account_id", to = "account_id")]
     pub payment_asset_account: HasOne<super::asset_accounts::Entity>,
-    pub payment_asset_account_id: Option<String>,
+    pub payment_asset_account_id: String,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

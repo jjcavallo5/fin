@@ -6,3 +6,4 @@ pub mod plaid_item;
 pub mod plan_excess_allocation_rules;
 pub mod plan_liability_rules;
 pub mod plans;
+pub mod types;

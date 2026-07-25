@@ -23,17 +23,16 @@ pub struct Model {
     pub allocation_type: AllocationType,
 
     #[sea_orm(nullable)]
-    pub amount_cents: Option<i32>,
-    #[sea_orm(nullable)]
-    pub percentage_bps: Option<i32>,
+    pub allocation_value: Option<i64>,
+    pub position: i32,
 
     #[sea_orm(belongs_to, from = "plan_id", to = "id")]
     pub plan: HasOne<super::plans::Entity>,
-    pub plan_id: Option<i32>,
+    pub plan_id: i32,
 
-    #[sea_orm(belongs_to, from = "asset_account_id", to = "account_id")]
-    pub asset_account: HasOne<super::asset_accounts::Entity>,
-    pub asset_account_id: Option<String>,
+    pub source_asset_account_id: String,
+
+    pub destination_asset_account_id: String,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
