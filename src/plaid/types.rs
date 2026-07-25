@@ -1,7 +1,5 @@
-use rust_decimal::{Decimal, RoundingStrategy};
 use serde::de::{self, Deserializer};
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 
 #[derive(Serialize)]
 pub struct GetAccountRequest {
@@ -34,12 +32,7 @@ pub enum AccountType {
 }
 
 fn decimal_to_cents<E: de::Error>(value: &str) -> Result<i64, E> {
-    let decimal = Decimal::from_str(value)
-        .or_else(|_| Decimal::from_scientific(value))
-        .map_err(E::custom)?;
-    let cents = (decimal * Decimal::from(100))
-        .round_dp_with_strategy(0, RoundingStrategy::MidpointAwayFromZero);
-    cents.to_string().parse::<i64>().map_err(E::custom)
+    crate::money::parse_dollars_to_cents(value).map_err(E::custom)
 }
 
 fn dollars_to_cents<'de, D: Deserializer<'de>>(deserializer: D) -> Result<i64, D::Error> {

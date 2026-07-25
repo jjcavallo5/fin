@@ -1,4 +1,4 @@
-use crate::plaid;
+use crate::{money, plaid};
 
 pub async fn balance() {
     let linked_items = plaid::get_linked_accounts().await;
@@ -18,22 +18,22 @@ pub async fn balance() {
                     "  {} ({}): ${} (${})",
                     account.name,
                     account.account_subtype,
-                    format_cents(account.balances.current_cents),
+                    money::format_cents(account.balances.current_cents),
                     account
                         .balances
                         .available_cents
-                        .map(format_cents)
+                        .map(money::format_cents)
                         .unwrap_or_else(|| "unavailable".to_string())
                 ),
                 plaid::types::AccountType::Credit | plaid::types::AccountType::Loan => println!(
                     "  {} ({}): -${} (-${})",
                     account.name,
                     account.account_subtype,
-                    format_cents(account.balances.current_cents),
+                    money::format_cents(account.balances.current_cents),
                     account
                         .balances
                         .available_cents
-                        .map(format_cents)
+                        .map(money::format_cents)
                         .unwrap_or_else(|| "unavailable".to_string())
                 ),
             }
@@ -63,7 +63,7 @@ pub async fn net_worth() {
                         "  {} ({}): \x1b[32;1m+${}\x1b[0m",
                         account.name,
                         account.account_subtype,
-                        format_cents(account.balances.current_cents),
+                        money::format_cents(account.balances.current_cents),
                     );
                     net_worth += account.balances.current_cents;
                 }
@@ -72,7 +72,7 @@ pub async fn net_worth() {
                         "  {} ({}): \x1b[31;1m-${}\x1b[0m",
                         account.name,
                         account.account_subtype,
-                        format_cents(account.balances.current_cents),
+                        money::format_cents(account.balances.current_cents),
                     );
                     net_worth -= account.balances.current_cents;
                 }
@@ -80,11 +80,8 @@ pub async fn net_worth() {
         }
     }
 
-    println!("\n\x1B[1mNet Worth: ${}\x1B[0m\n", format_cents(net_worth));
-}
-
-fn format_cents(cents: i64) -> String {
-    let sign = if cents < 0 { "-" } else { "" };
-    let absolute = cents.unsigned_abs();
-    format!("{sign}{}.{:02}", absolute / 100, absolute % 100)
+    println!(
+        "\n\x1B[1mNet Worth: {}\x1B[0m\n",
+        money::format_cents(net_worth)
+    );
 }

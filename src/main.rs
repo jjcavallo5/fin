@@ -7,6 +7,7 @@ mod entity;
 mod link;
 mod logging;
 mod migration;
+mod money;
 mod plaid;
 mod plan;
 mod tui;
