@@ -1,6 +1,7 @@
 use crate::daemon;
 use crate::db;
 use crate::entity;
+use crate::environment;
 use crate::logging;
 pub mod types;
 use sea_orm::EntityTrait;
@@ -30,7 +31,7 @@ pub async fn get_plaid_account(
         access_token: token.clone(),
     };
     let resp = client
-        .post("https://sandbox.plaid.com/accounts/get")
+        .post(environment::plaid_endpoint("accounts/get"))
         .header("Content-Type", "application/json")
         .json(&request)
         .send()

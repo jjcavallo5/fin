@@ -4,6 +4,7 @@ mod balance;
 mod daemon;
 mod db;
 mod entity;
+mod environment;
 mod link;
 mod logging;
 mod migration;

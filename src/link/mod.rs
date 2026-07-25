@@ -1,5 +1,6 @@
 use crate::db;
 use crate::entity;
+use crate::environment;
 use crate::logging;
 use crate::plaid;
 use crate::tui;
@@ -64,7 +65,7 @@ pub async fn unlink() {
     };
     let client = reqwest::Client::new();
     client
-        .post("https://sandbox.plaid.com/item/remove")
+        .post(environment::plaid_endpoint("item/remove"))
         .json(&request)
         .send()
         .await

@@ -95,7 +95,10 @@ const INITIAL_SCHEMA: &[&str] = &[
         WHERE allocation_type = 'remainder'"#,
 ];
 
-pub async fn migrate(db: &DatabaseConnection) -> Result<(), DbErr> {
+pub async fn migrate(
+    db: &DatabaseConnection,
+    database_path: &std::path::Path,
+) -> Result<(), DbErr> {
     db.execute_raw(Statement::from_string(
         DatabaseBackend::Sqlite,
         "PRAGMA foreign_keys = ON",
@@ -122,9 +125,10 @@ pub async fn migrate(db: &DatabaseConnection) -> Result<(), DbErr> {
         == 1;
 
     if existing_tables > 0 && !has_migrations {
-        return Err(DbErr::Custom(
-            "unsupported pre-migration FIN database; recreate ~/.fin/fin.db".to_string(),
-        ));
+        return Err(DbErr::Custom(format!(
+            "unsupported pre-migration FIN database; recreate {}",
+            database_path.display()
+        )));
     }
 
     if !has_migrations {
@@ -165,12 +169,13 @@ pub async fn migrate(db: &DatabaseConnection) -> Result<(), DbErr> {
 mod tests {
     use super::migrate;
     use sea_orm::{ConnectionTrait, Database, DatabaseBackend, Statement};
+    use std::path::Path;
 
     #[tokio::test]
     async fn creates_schema_and_is_idempotent() {
         let db = Database::connect("sqlite::memory:").await.unwrap();
-        migrate(&db).await.unwrap();
-        migrate(&db).await.unwrap();
+        migrate(&db, Path::new("test.db")).await.unwrap();
+        migrate(&db, Path::new("test.db")).await.unwrap();
 
         let version = db
             .query_one_raw(Statement::from_string(
@@ -195,7 +200,8 @@ mod tests {
         .await
         .unwrap();
 
-        let error = migrate(&db).await.unwrap_err();
+        let error = migrate(&db, Path::new("sandbox.db")).await.unwrap_err();
         assert!(error.to_string().contains("pre-migration"));
+        assert!(error.to_string().contains("sandbox.db"));
     }
 }

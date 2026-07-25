@@ -1,6 +1,7 @@
 use crate::daemon;
 use crate::db;
 use crate::entity;
+use crate::environment;
 use crate::link::types;
 use crate::logging;
 use crate::plaid;
@@ -28,7 +29,7 @@ pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
     let client = reqwest::Client::new();
 
     let resp = client
-        .post("https://sandbox.plaid.com/link/token/create")
+        .post(environment::plaid_endpoint("link/token/create"))
         .header("Content-Type", "application/json")
         .json(&request)
         .send()
@@ -121,7 +122,7 @@ pub async fn exchange_token(
 
     let client = reqwest::Client::new();
     let resp = client
-        .post("https://sandbox.plaid.com/item/public_token/exchange")
+        .post(environment::plaid_endpoint("item/public_token/exchange"))
         .header("Content-Type", "application/json")
         .json(&request)
         .send()
