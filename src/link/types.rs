@@ -4,12 +4,14 @@ use tokio::sync::{Mutex, oneshot};
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub enum LinkProduct {
     Bank,
+    Investment,
 }
 
 impl LinkProduct {
     pub fn plaid_name(self) -> &'static str {
         match self {
             Self::Bank => "auth",
+            Self::Investment => "investments",
         }
     }
 }
@@ -41,5 +43,10 @@ mod tests {
     #[test]
     fn bank_uses_plaid_auth() {
         assert_eq!(LinkProduct::Bank.plaid_name(), "auth");
+    }
+
+    #[test]
+    fn investment_uses_plaid_investments() {
+        assert_eq!(LinkProduct::Investment.plaid_name(), "investments");
     }
 }

@@ -52,6 +52,7 @@ enum PlanSubcommands {
 #[derive(Subcommand, Debug)]
 enum LinkSubcommands {
     Bank,
+    Investment,
 }
 
 #[tokio::main]
@@ -63,6 +64,7 @@ async fn main() {
         Commands::Daemon => daemon::run_daemon().await,
         Commands::Link { command } => match command {
             LinkSubcommands::Bank => link::link(link::types::LinkProduct::Bank).await,
+            LinkSubcommands::Investment => link::link(link::types::LinkProduct::Investment).await,
         },
         Commands::List => link::list().await,
         Commands::Login => daemon::login(),
