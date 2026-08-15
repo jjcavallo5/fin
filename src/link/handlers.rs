@@ -8,9 +8,11 @@ use axum::Json;
 use axum::extract::State;
 use sea_orm::ActiveModelTrait;
 
-pub async fn get_link_token() -> axum::Json<types::PlaidAuthResponse> {
+pub async fn get_link_token(
+    State(state): State<std::sync::Arc<types::LinkServerState>>,
+) -> axum::Json<types::PlaidAuthResponse> {
     println!("[GET TOKEN]: get token called");
-    let token = daemon::create_link_token().unwrap_or_else(|| {
+    let token = daemon::create_link_token(state.product).unwrap_or_else(|| {
         std::process::exit(1);
     });
     axum::Json(types::PlaidAuthResponse { link_token: token })

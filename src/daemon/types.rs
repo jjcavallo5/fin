@@ -9,7 +9,9 @@ pub enum DaemonRequest {
         plaid_client_id: String,
         plaid_secret: String,
     },
-    CreateLinkToken,
+    CreateLinkToken {
+        product: crate::link::types::LinkProduct,
+    },
     ExchangePublicToken {
         public_token: String,
     },

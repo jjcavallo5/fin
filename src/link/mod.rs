@@ -14,13 +14,14 @@ use tokio::sync::{Mutex, oneshot};
 mod handlers;
 pub(crate) mod types;
 
-pub async fn link() {
+pub async fn link(product: types::LinkProduct) {
     // Set up app state to recieve shutdown signal on success
     let (shutdown_tx, shutdown_rx) = oneshot::channel();
 
     // Set up serving of the frontend react app
     let server_state = types::LinkServerState {
         shutdown_tx: std::sync::Arc::new(Mutex::new(Some(shutdown_tx))),
+        product,
     };
     let serve_dir = tower_http::services::ServeDir::new("web/dist");
     let router: Router = axum::Router::new()
