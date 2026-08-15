@@ -11,7 +11,7 @@ pub enum LinkProduct {
 impl LinkProduct {
     pub fn plaid_name(self) -> &'static str {
         match self {
-            Self::Bank => "auth",
+            Self::Bank => "transactions",
             Self::Investment => "investments",
             Self::Liability => "liabilities",
         }
@@ -43,8 +43,8 @@ mod tests {
     use super::LinkProduct;
 
     #[test]
-    fn bank_uses_plaid_auth() {
-        assert_eq!(LinkProduct::Bank.plaid_name(), "auth");
+    fn bank_uses_plaid_transactions() {
+        assert_eq!(LinkProduct::Bank.plaid_name(), "transactions");
     }
 
     #[test]
