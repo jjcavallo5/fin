@@ -24,7 +24,10 @@ struct Cli {
 enum Commands {
     Balance,
     Daemon,
-    Link,
+    Link {
+        #[command(subcommand)]
+        command: LinkSubcommands,
+    },
     Login,
     List,
     Ping,
@@ -46,6 +49,11 @@ enum PlanSubcommands {
     Execute { plan_id: i32 },
 }
 
+#[derive(Subcommand, Debug)]
+enum LinkSubcommands {
+    Bank,
+}
+
 #[tokio::main]
 async fn main() {
     let args = Cli::parse();
@@ -53,7 +61,9 @@ async fn main() {
     match &args.command {
         Commands::Balance => balance::balance().await,
         Commands::Daemon => daemon::run_daemon().await,
-        Commands::Link => link::link().await,
+        Commands::Link { command } => match command {
+            LinkSubcommands::Bank => link::link(link::types::LinkProduct::Bank).await,
+        },
         Commands::List => link::list().await,
         Commands::Login => daemon::login(),
         Commands::Ping => daemon::ping(),

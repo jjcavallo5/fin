@@ -103,7 +103,14 @@ async fn plaid_post<T: serde::de::DeserializeOwned>(
         .await
         .map_err(|e| format!("Plaid request failed: {e}"))?;
     if !response.status().is_success() {
-        return Err(format!("Plaid request failed: {}", response.status()));
+        let status = response.status();
+        let response_body = response
+            .text()
+            .await
+            .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+        return Err(format!(
+            "Plaid request to {path} failed: {status}: {response_body}"
+        ));
     }
     response
         .json()
@@ -111,7 +118,10 @@ async fn plaid_post<T: serde::de::DeserializeOwned>(
         .map_err(|e| format!("Plaid response was malformed: {e}"))
 }
 
-pub async fn create_link_token(session: &Session) -> types::DaemonResponse {
+pub async fn create_link_token(
+    product: crate::link::types::LinkProduct,
+    session: &Session,
+) -> types::DaemonResponse {
     let (client_id, secret) = match session.credentials() {
         Ok(value) => value,
         Err(message) => return types::DaemonResponse::Error { message },
@@ -120,7 +130,7 @@ pub async fn create_link_token(session: &Session) -> types::DaemonResponse {
         "link/token/create",
         json!({
             "client_id": client_id, "secret": secret, "client_name": "FIN",
-            "country_codes": ["US"], "language": "en", "products": ["transactions"],
+            "country_codes": ["US"], "language": "en", "products": [product.plaid_name()],
             "user": { "client_user_id": "Jeremy" }
         }),
     )

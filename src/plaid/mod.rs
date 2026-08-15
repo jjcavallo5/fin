@@ -24,7 +24,14 @@ pub async fn get_plaid_account(
         .map_err(|e| format!("failed to get Plaid accounts: {e}"))?;
 
     if !resp.status().is_success() {
-        return Err(format!("Plaid accounts request failed: {}", resp.status()));
+        let status = resp.status();
+        let response_body = resp
+            .text()
+            .await
+            .unwrap_or_else(|e| format!("<failed to read response body: {e}>"));
+        return Err(format!(
+            "Plaid accounts request failed: {status}: {response_body}"
+        ));
     }
 
     let body: types::GetAccountResponse = resp

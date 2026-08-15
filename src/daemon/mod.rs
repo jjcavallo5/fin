@@ -24,7 +24,9 @@ async fn handle_request(
             plaid_secret,
         } => handlers::login(pass, plaid_client_id, plaid_secret, session, db_salt),
         types::DaemonRequest::Stop => handlers::stop(),
-        types::DaemonRequest::CreateLinkToken => handlers::create_link_token(session).await,
+        types::DaemonRequest::CreateLinkToken { product } => {
+            handlers::create_link_token(product, session).await
+        }
         types::DaemonRequest::ExchangePublicToken { public_token } => {
             handlers::exchange_public_token(public_token, session).await
         }
@@ -200,8 +202,8 @@ fn read_response(stream: &mut std::os::unix::net::UnixStream) -> types::DaemonRe
     })
 }
 
-pub fn create_link_token() -> Option<String> {
-    match send_request(types::DaemonRequest::CreateLinkToken) {
+pub fn create_link_token(product: crate::link::types::LinkProduct) -> Option<String> {
+    match send_request(types::DaemonRequest::CreateLinkToken { product }) {
         types::DaemonResponse::LinkToken { token } => Some(token),
         types::DaemonResponse::Error { message } => {
             logging::error(&message);
