@@ -2,7 +2,7 @@
     <h1 align="center"><i>FIN</i></h1>
     <div align="center">
         <a align="center" href='https://jeremycavallo.com/blog'><img src="https://img.shields.io/badge/Blog-white?logo=ghostty&logoColor=blue" alt="blog"></a>
-        <a align="center" href='https://github.com/jjcavallo5/the-art-of-code'><img src="https://img.shields.io/github/stars/jjcavallo5/the-art-of-code" alt="stars"></a>
+        <a align="center" href='https://github.com/jjcavallo5/the-art-of-code'><img src="https://img.shields.io/github/stars/jjcavallo5/fin" alt="stars"></a>
     </div>
     <p align="center"><i>Financial Automation CLI</i></h1>
 </div>
