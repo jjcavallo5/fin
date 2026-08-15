@@ -2,6 +2,7 @@ pub mod encryption;
 mod handlers;
 mod types;
 use crate::{db, logging};
+use inquire::{Password, PasswordDisplayMode};
 use std::io::{Read, Write};
 use std::os::unix::fs::PermissionsExt;
 
@@ -93,23 +94,19 @@ fn connect() -> std::os::unix::net::UnixStream {
 }
 
 pub fn login() {
-    // Get password
     spawn_daemon();
-    println!("Enter encryption password: ");
-    let mut password = String::new();
-    std::io::stdin()
-        .read_line(&mut password)
-        .expect("Incorrect password");
-    println!("Enter Plaid client ID: ");
-    let mut plaid_client_id = String::new();
-    std::io::stdin()
-        .read_line(&mut plaid_client_id)
-        .expect("Failed to read Plaid client ID");
-    println!("Enter Plaid secret: ");
-    let mut plaid_secret = String::new();
-    std::io::stdin()
-        .read_line(&mut plaid_secret)
-        .expect("Failed to read Plaid secret");
+
+    let secure_prompt = |message| {
+        Password::new(message)
+            .without_confirmation()
+            .with_display_mode(PasswordDisplayMode::Masked)
+            .prompt()
+    };
+
+    let password = secure_prompt("Enter encryption password:").expect("Incorrect password");
+    let plaid_client_id =
+        secure_prompt("Enter Plaid client ID:").expect("Failed to read Plaid client ID");
+    let plaid_secret = secure_prompt("Enter Plaid secret:").expect("Failed to read Plaid secret");
 
     // Send login request with password
     let mut stream = connect();
