@@ -15,13 +15,14 @@
 
 ## Installation
 
-Clone the repo, then build the binary:
+Install the latest release on Linux or macOS:
 
 ```bash
-cargo build --release
+curl -fsSL https://raw.githubusercontent.com/jjcavallo5/fin/main/install.sh | bash
 ```
 
-Then add the binary to your path
+This installs `fin` at `~/.fin/bin/fin` and adds that directory to your PATH in
+`~/.bashrc`. Open a new shell or run `source ~/.bashrc` after installation.
 
 ## Setup
 
