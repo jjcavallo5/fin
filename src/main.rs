@@ -53,6 +53,7 @@ enum PlanSubcommands {
 enum LinkSubcommands {
     Bank,
     Investment,
+    Liability,
 }
 
 #[tokio::main]
@@ -65,6 +66,7 @@ async fn main() {
         Commands::Link { command } => match command {
             LinkSubcommands::Bank => link::link(link::types::LinkProduct::Bank).await,
             LinkSubcommands::Investment => link::link(link::types::LinkProduct::Investment).await,
+            LinkSubcommands::Liability => link::link(link::types::LinkProduct::Liability).await,
         },
         Commands::List => link::list().await,
         Commands::Login => daemon::login(),

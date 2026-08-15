@@ -5,6 +5,7 @@ use tokio::sync::{Mutex, oneshot};
 pub enum LinkProduct {
     Bank,
     Investment,
+    Liability,
 }
 
 impl LinkProduct {
@@ -12,6 +13,7 @@ impl LinkProduct {
         match self {
             Self::Bank => "auth",
             Self::Investment => "investments",
+            Self::Liability => "liabilities",
         }
     }
 }
@@ -48,5 +50,10 @@ mod tests {
     #[test]
     fn investment_uses_plaid_investments() {
         assert_eq!(LinkProduct::Investment.plaid_name(), "investments");
+    }
+
+    #[test]
+    fn liability_uses_plaid_liabilities() {
+        assert_eq!(LinkProduct::Liability.plaid_name(), "liabilities");
     }
 }
